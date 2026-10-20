@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
+import 'providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Các providers sẽ được các thành viên thêm vào đây:
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => ProductProvider()),
         // ChangeNotifierProvider(create: (_) => CartProvider()),
         // ChangeNotifierProvider(create: (_) => OrderProvider()),
