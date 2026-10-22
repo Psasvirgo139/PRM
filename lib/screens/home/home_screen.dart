@@ -20,6 +20,11 @@ class HomeScreen extends StatelessWidget {
             tooltip: 'Giỏ hàng',
             onPressed: () => context.push('/cart'),
           ),
+          IconButton(
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Hồ sơ người dùng',
+            onPressed: () => context.push('/profile'),
+          ),
         ],
       ),
       body: Center(
@@ -47,6 +52,15 @@ class HomeScreen extends StatelessWidget {
                 runSpacing: 12,
                 alignment: WrapAlignment.center,
                 children: [
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/profile'),
+                    icon: const Icon(Icons.person),
+                    label: const Text('Hồ sơ người dùng (Profile)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
                   ElevatedButton.icon(
                     onPressed: () => context.push('/cart'),
                     icon: const Icon(Icons.shopping_cart),
