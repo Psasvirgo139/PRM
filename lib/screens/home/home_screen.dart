@@ -106,44 +106,6 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: CustomScrollView(
           slivers: [
-            // 1. Banner chào mừng / Phân quyền Admin
-            if (auth.isAdmin)
-              SliverToBoxAdapter(
-                child: Container(
-                  margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.deepPurple.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
-                      const SizedBox(width: 10),
-                      const Expanded(
-                        child: Text(
-                          'Chế độ Quản trị viên: Bạn có quyền Thêm, Sửa, Xóa sản phẩm.',
-                          style: TextStyle(
-                            color: Colors.deepPurple,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.deepPurple,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () => ProductFormDialog.show(context),
-                        icon: const Icon(Icons.add_circle_outline, size: 18),
-                        label: const Text('Thêm mới'),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
 
             // 2. Thanh tìm kiếm (Search Bar)
             SliverToBoxAdapter(
