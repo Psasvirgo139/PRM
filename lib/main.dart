@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
 import 'providers/auth_provider.dart';
+import 'providers/order_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,10 +22,10 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
         // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => ProductProvider()),
         // ChangeNotifierProvider(create: (_) => CartProvider()),
-        // ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: MaterialApp.router(
         title: 'PRM393 E-Commerce',

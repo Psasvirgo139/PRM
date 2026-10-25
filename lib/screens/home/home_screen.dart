@@ -52,6 +52,12 @@ class HomeScreen extends StatelessWidget {
                     icon: const Icon(Icons.shopping_cart),
                     label: const Text('Giỏ hàng'),
                   ),
+                  FilledButton.icon(
+                    onPressed: () => context.push('/checkout'),
+                    icon: const Icon(Icons.payment),
+                    label: const Text('Thanh toán (Checkout)'),
+                    style: FilledButton.styleFrom(backgroundColor: Colors.deepPurple),
+                  ),
                   ElevatedButton.icon(
                     onPressed: () => context.push('/orders'),
                     icon: const Icon(Icons.receipt_long),
