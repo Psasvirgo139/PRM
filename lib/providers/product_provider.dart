@@ -20,6 +20,32 @@ class ProductProvider extends ChangeNotifier {
   int? get selectedCategoryId => _selectedCategoryId;
   String? get errorMessage => _errorMessage;
 
+  // Tìm sản phẩm trong danh sách theo ID
+  Product? findById(int id) {
+    try {
+      return _products.firstWhere((p) => p.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // Lấy tên danh mục theo ID
+  String getCategoryName(int? categoryId) {
+    if (categoryId == null) return 'Chưa phân loại';
+    try {
+      return _categories.firstWhere((c) => c.id == categoryId).name;
+    } catch (_) {
+      return 'Chưa phân loại';
+    }
+  }
+
+  // Lấy chi tiết sản phẩm từ SQLite (nếu chưa có trong bộ nhớ)
+  Future<Product?> fetchProductDetail(int id) async {
+    final existing = findById(id);
+    if (existing != null) return existing;
+    return await _productRepository.getProductById(id);
+  }
+
   ProductProvider() {
     initData();
   }

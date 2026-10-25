@@ -181,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => _handleLogin('admin', 'admin123'),
                     icon: const Icon(Icons.admin_panel_settings_rounded),
-                    label: const Text('⚡ Đăng nhập nhanh Admin (admin/admin123)'),
+                    label: const Text('Đăng nhập nhanh Admin (admin/admin123)'),
                   ),
                   const SizedBox(height: 10),
 
@@ -197,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => _handleLogin('customer', 'cust123'),
                     icon: const Icon(Icons.person_rounded),
-                    label: const Text('⚡ Đăng nhập nhanh Khách hàng (customer/cust123)'),
+                    label: const Text('Đăng nhập nhanh Khách hàng (customer/cust123)'),
                   ),
                 ],
               ),
