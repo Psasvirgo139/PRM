@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -119,7 +119,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
+    if (oldVersion < 3) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
@@ -237,6 +237,144 @@ class DatabaseHelper {
     for (var p in products) {
       await db.insert('products', p);
     }
+
+    // 4. Seed Orders (Đơn hàng mẫu với các trạng thái khác nhau)
+    final yesterday = DateTime.now().subtract(const Duration(days: 1)).toIso8601String();
+    final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2)).toIso8601String();
+    final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3)).toIso8601String();
+
+    // Đơn 1: COMPLETED (hôm qua) — user customer (id=2)
+    await db.insert('orders', {
+      'user_id': 2,
+      'order_code': 'ORD-20261027-001',
+      'customer_name': 'Nguyễn Văn A',
+      'phone': '0987654321',
+      'address': 'Số 123 Cầu Giấy, Dịch Vọng Hậu, Hà Nội',
+      'note': 'Giao giờ hành chính',
+      'subtotal': 35480000.0,
+      'discount': 0.0,
+      'shipping_fee': 30000.0,
+      'final_amount': 35510000.0,
+      'payment_method': 'COD',
+      'status': 'COMPLETED',
+      'created_at': yesterday,
+    });
+    await db.insert('order_items', {
+      'order_id': 1,
+      'product_id': 1,
+      'product_name': 'iPhone 15 Pro Max 256GB',
+      'product_price': 29990000.0,
+      'quantity': 1,
+      'subtotal': 29990000.0,
+    });
+    await db.insert('order_items', {
+      'order_id': 1,
+      'product_id': 4,
+      'product_name': 'AirPods Pro 2 USB-C',
+      'product_price': 5490000.0,
+      'quantity': 1,
+      'subtotal': 5490000.0,
+    });
+
+    // Đơn 2: COMPLETED (2 ngày trước) — user customer2 (id=3)
+    await db.insert('orders', {
+      'user_id': 3,
+      'order_code': 'ORD-20261026-001',
+      'customer_name': 'Trần Thị B',
+      'phone': '0912345678',
+      'address': '456 Đường Lê Duẩn, Hải Châu, Đà Nẵng',
+      'note': '',
+      'subtotal': 26990000.0,
+      'discount': 1000000.0,
+      'shipping_fee': 0.0,
+      'final_amount': 25990000.0,
+      'payment_method': 'BANK_TRANSFER',
+      'status': 'COMPLETED',
+      'created_at': twoDaysAgo,
+    });
+    await db.insert('order_items', {
+      'order_id': 2,
+      'product_id': 3,
+      'product_name': 'MacBook Air M3 13 inch',
+      'product_price': 26990000.0,
+      'quantity': 1,
+      'subtotal': 26990000.0,
+    });
+
+    // Đơn 3: PENDING (hôm nay) — user customer (id=2)
+    await db.insert('orders', {
+      'user_id': 2,
+      'order_code': 'ORD-20261028-001',
+      'customer_name': 'Nguyễn Văn A',
+      'phone': '0987654321',
+      'address': 'Số 123 Cầu Giấy, Dịch Vọng Hậu, Hà Nội',
+      'note': 'Giao trước 5h chiều',
+      'subtotal': 5490000.0,
+      'discount': 0.0,
+      'shipping_fee': 30000.0,
+      'final_amount': 5520000.0,
+      'payment_method': 'COD',
+      'status': 'PENDING',
+      'created_at': now,
+    });
+    await db.insert('order_items', {
+      'order_id': 3,
+      'product_id': 4,
+      'product_name': 'AirPods Pro 2 USB-C',
+      'product_price': 5490000.0,
+      'quantity': 1,
+      'subtotal': 5490000.0,
+    });
+
+    // Đơn 4: PROCESSING (hôm nay) — user customer2 (id=3)
+    await db.insert('orders', {
+      'user_id': 3,
+      'order_code': 'ORD-20261028-002',
+      'customer_name': 'Trần Thị B',
+      'phone': '0912345678',
+      'address': '456 Đường Lê Duẩn, Hải Châu, Đà Nẵng',
+      'note': 'Để ở sảnh',
+      'subtotal': 29990000.0,
+      'discount': 500000.0,
+      'shipping_fee': 0.0,
+      'final_amount': 29490000.0,
+      'payment_method': 'BANK_TRANSFER',
+      'status': 'PROCESSING',
+      'created_at': now,
+    });
+    await db.insert('order_items', {
+      'order_id': 4,
+      'product_id': 1,
+      'product_name': 'iPhone 15 Pro Max 256GB',
+      'product_price': 29990000.0,
+      'quantity': 1,
+      'subtotal': 29990000.0,
+    });
+
+    // Đơn 5: CANCELLED (3 ngày trước) — user customer (id=2)
+    await db.insert('orders', {
+      'user_id': 2,
+      'order_code': 'ORD-20261025-001',
+      'customer_name': 'Nguyễn Văn A',
+      'phone': '0987654321',
+      'address': 'Số 123 Cầu Giấy, Dịch Vọng Hậu, Hà Nội',
+      'note': '',
+      'subtotal': 27490000.0,
+      'discount': 0.0,
+      'shipping_fee': 30000.0,
+      'final_amount': 27520000.0,
+      'payment_method': 'COD',
+      'status': 'CANCELLED',
+      'created_at': threeDaysAgo,
+    });
+    await db.insert('order_items', {
+      'order_id': 5,
+      'product_id': 2,
+      'product_name': 'Samsung Galaxy S24 Ultra',
+      'product_price': 27490000.0,
+      'quantity': 1,
+      'subtotal': 27490000.0,
+    });
   }
 
   Future<void> close() async {
