@@ -7,6 +7,10 @@ import '../../screens/auth/login_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/admin/admin_dashboard_screen.dart';
 
+import '../../screens/checkout/order_success_screen.dart';
+import '../../models/order.dart';
+import '../../models/cart_item.dart';
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   routes: [
@@ -32,7 +36,17 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/checkout',
-      builder: (context, state) => const CheckoutScreen(),
+      builder: (context, state) {
+        final items = state.extra as List<CartItem>?;
+        return CheckoutScreen(initialItems: items);
+      },
+    ),
+    GoRoute(
+      path: '/order-success',
+      builder: (context, state) {
+        final order = state.extra as Order?;
+        return OrderSuccessScreen(order: order);
+      },
     ),
     GoRoute(
       path: '/orders',

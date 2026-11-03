@@ -2,6 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:prm/models/user.dart';
 
 void main() {
+  testWidgets('App smoke test', (WidgetTester tester) async {
+    // Basic test checking widget definition
+    expect(const MyApp(), isNotNull);
   group('User Model Tests', () {
     test('User copyWith updates fields correctly', () {
       final user = User(

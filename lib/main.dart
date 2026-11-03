@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
 import 'providers/auth_provider.dart';
+import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
 
 void main() async {
@@ -22,6 +23,10 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        // Các providers tiếp theo do các thành viên tích hợp:
+        // ChangeNotifierProvider(create: (_) => ProductProvider()),
+        // ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
           create: (_) => CartProvider(),
           update: (_, auth, cart) {
