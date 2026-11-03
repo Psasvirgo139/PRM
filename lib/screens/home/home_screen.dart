@@ -67,9 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () => context.push('/cart'),
           ),
           IconButton(
-            icon: Icon(auth.isLoggedIn ? Icons.account_circle : Icons.login),
-            tooltip: auth.isLoggedIn ? 'Tài khoản' : 'Đăng nhập',
-            onPressed: () => context.push(auth.isLoggedIn ? '/profile' : '/login'),
+            icon: const Icon(Icons.account_circle_outlined),
+            tooltip: 'Hồ sơ người dùng',
+            onPressed: () => context.push('/profile'),
           ),
         ],
       ),
@@ -244,24 +244,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      height: 1.2,
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/profile'),
+                    icon: const Icon(Icons.person),
+                    label: const Text('Hồ sơ người dùng (Profile)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      foregroundColor: Colors.white,
                     ),
                   ),
-                  const Spacer(),
-                  Text(
-                    CurrencyFormatter.format(product.price),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple.shade700,
-                    ),
+                  ElevatedButton.icon(
+                    onPressed: () => context.push('/cart'),
+                    icon: const Icon(Icons.shopping_cart),
+                    label: const Text('Giỏ hàng'),
                   ),
                   const SizedBox(height: 8),
 

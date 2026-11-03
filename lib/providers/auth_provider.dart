@@ -94,23 +94,73 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> updateProfile({
+  Future<bool> updateProfile({
     required String fullName,
     required String email,
     required String phone,
     required String address,
+    String? avatarUrl,
   }) async {
-    if (_currentUser == null) return;
+    if (_currentUser == null) return false;
 
-    final updated = _currentUser!.copyWith(
-      fullName: fullName,
-      email: email,
-      phone: phone,
-      address: address,
-    );
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
 
-    await _authRepository.updateUserProfile(updated);
-    _currentUser = updated;
+    try {
+      final updated = _currentUser!.copyWith(
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
+      );
+
+      await _authRepository.updateUserProfile(updated);
+      _currentUser = updated;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_currentUser == null) return false;
+
+    if (_currentUser!.password != currentPassword) {
+      _errorMessage = 'Mật khẩu hiện tại không chính xác!';
+      notifyListeners();
+      return false;
+    }
+
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authRepository.changePassword(_currentUser!.id!, newPassword);
+      _currentUser = _currentUser!.copyWith(password: newPassword);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  void clearErrorMessage() {
+    _errorMessage = null;
     notifyListeners();
   }
 
