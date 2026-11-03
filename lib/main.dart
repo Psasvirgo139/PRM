@@ -8,6 +8,8 @@ import 'core/database/database_helper.dart';
 import 'core/router/app_router.dart';
 import 'providers/auth_provider.dart';
 import 'providers/product_provider.dart';
+import 'providers/order_provider.dart';
+import 'providers/cart_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,8 +41,21 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
         // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
+          create: (_) => CartProvider(),
+          update: (_, auth, cart) {
+            final cartProvider = cart ?? CartProvider();
+            if (auth.currentUser?.id != null) {
+              cartProvider.setUserId(auth.currentUser!.id!);
+            }
+            return cartProvider;
+          },
+        ),
+        // Các providers tiếp theo do các thành viên tích hợp:
+        // ChangeNotifierProvider(create: (_) => ProductProvider()),
         // ChangeNotifierProvider(create: (_) => OrderProvider()),
       ],
       child: MaterialApp.router(
