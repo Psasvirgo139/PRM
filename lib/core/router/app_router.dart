@@ -5,7 +5,9 @@ import '../../screens/checkout/checkout_screen.dart';
 import '../../screens/order/order_history_screen.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/profile/profile_screen.dart';
+import '../../models/product.dart';
 import '../../screens/admin/admin_dashboard_screen.dart';
+import '../../screens/product/product_detail_screen.dart';
 
 import '../../screens/checkout/order_success_screen.dart';
 import '../../models/order.dart';
@@ -17,6 +19,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/',
       builder: (context, state) => const HomeScreen(),
+    ),
+    GoRoute(
+      path: '/product/:id',
+      builder: (context, state) {
+        final id = int.tryParse(state.pathParameters['id'] ?? '') ?? 0;
+        final product = state.extra as Product?;
+        return ProductDetailScreen(productId: id, initialProduct: product);
+      },
     ),
     GoRoute(
       path: '/login',
