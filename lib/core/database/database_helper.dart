@@ -19,14 +19,14 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
   }
 
   Future<void> _createDB(Database db, int version) async {
-    // 1. Users (Hỗ trợ phân quyền Admin và Customer)
+    // 1. Users (Hỗ trợ phân quyền Admin, Employee và Customer)
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,7 +119,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 3) {
+    if (oldVersion < 4) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
@@ -134,7 +134,7 @@ class DatabaseHelper {
   Future<void> _seedInitialData(Database db) async {
     final now = DateTime.now().toIso8601String();
 
-    // 1. Seed Users (Tài khoản mẫu Admin và Customer)
+    // 1. Seed Users (Tài khoản mẫu Admin, Employee và Customer)
     await db.insert('users', {
       'username': 'admin',
       'password': 'admin123',
@@ -144,6 +144,18 @@ class DatabaseHelper {
       'address': 'Trụ sở Quản lý, Tòa nhà FPT',
       'role': 'ADMIN',
       'avatar_url': 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200',
+      'created_at': now,
+    });
+
+    await db.insert('users', {
+      'username': 'employee',
+      'password': 'emp123',
+      'full_name': 'Trần Văn Nhân Viên (Employee)',
+      'email': 'employee@shop.com',
+      'phone': '0909998877',
+      'address': 'Chi nhánh FPT Shop',
+      'role': 'EMPLOYEE',
+      'avatar_url': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
       'created_at': now,
     });
 
@@ -243,9 +255,9 @@ class DatabaseHelper {
     final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2)).toIso8601String();
     final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3)).toIso8601String();
 
-    // Đơn 1: COMPLETED (hôm qua) — user customer (id=2)
+    // Đơn 1: COMPLETED (hôm qua) — user customer (id=3)
     await db.insert('orders', {
-      'user_id': 2,
+      'user_id': 3,
       'order_code': 'ORD-20261027-001',
       'customer_name': 'Nguyễn Văn A',
       'phone': '0987654321',
@@ -276,9 +288,9 @@ class DatabaseHelper {
       'subtotal': 5490000.0,
     });
 
-    // Đơn 2: COMPLETED (2 ngày trước) — user customer2 (id=3)
+    // Đơn 2: COMPLETED (2 ngày trước) — user customer2 (id=4)
     await db.insert('orders', {
-      'user_id': 3,
+      'user_id': 4,
       'order_code': 'ORD-20261026-001',
       'customer_name': 'Trần Thị B',
       'phone': '0912345678',
@@ -301,9 +313,9 @@ class DatabaseHelper {
       'subtotal': 26990000.0,
     });
 
-    // Đơn 3: PENDING (hôm nay) — user customer (id=2)
+    // Đơn 3: PENDING (hôm nay) — user customer (id=3)
     await db.insert('orders', {
-      'user_id': 2,
+      'user_id': 3,
       'order_code': 'ORD-20261028-001',
       'customer_name': 'Nguyễn Văn A',
       'phone': '0987654321',
@@ -326,9 +338,9 @@ class DatabaseHelper {
       'subtotal': 5490000.0,
     });
 
-    // Đơn 4: PROCESSING (hôm nay) — user customer2 (id=3)
+    // Đơn 4: PROCESSING (hôm nay) — user customer2 (id=4)
     await db.insert('orders', {
-      'user_id': 3,
+      'user_id': 4,
       'order_code': 'ORD-20261028-002',
       'customer_name': 'Trần Thị B',
       'phone': '0912345678',
@@ -351,9 +363,9 @@ class DatabaseHelper {
       'subtotal': 29990000.0,
     });
 
-    // Đơn 5: CANCELLED (3 ngày trước) — user customer (id=2)
+    // Đơn 5: CANCELLED (3 ngày trước) — user customer (id=3)
     await db.insert('orders', {
-      'user_id': 2,
+      'user_id': 3,
       'order_code': 'ORD-20261025-001',
       'customer_name': 'Nguyễn Văn A',
       'phone': '0987654321',

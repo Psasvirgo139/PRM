@@ -21,7 +21,9 @@ class AppDrawer extends StatelessWidget {
               gradient: LinearGradient(
                 colors: auth.isAdmin
                     ? [Colors.deepPurple.shade700, Colors.deepPurple.shade900]
-                    : [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
+                    : auth.isEmployee
+                        ? [Colors.teal.shade700, Colors.teal.shade900]
+                        : [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -33,9 +35,17 @@ class AppDrawer extends StatelessWidget {
                   : null,
               child: (user?.avatarUrl.isEmpty ?? true)
                   ? Icon(
-                      auth.isAdmin ? Icons.admin_panel_settings : Icons.person,
+                      auth.isAdmin
+                          ? Icons.admin_panel_settings
+                          : auth.isEmployee
+                              ? Icons.badge
+                              : Icons.person,
                       size: 40,
-                      color: auth.isAdmin ? Colors.deepPurple : theme.colorScheme.primary,
+                      color: auth.isAdmin
+                          ? Colors.deepPurple
+                          : auth.isEmployee
+                              ? Colors.teal
+                              : theme.colorScheme.primary,
                     )
                   : null,
             ),
@@ -58,11 +68,19 @@ class AppDrawer extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: auth.isAdmin ? Colors.amber.shade700 : Colors.teal.shade600,
+                      color: auth.isAdmin
+                          ? Colors.amber.shade700
+                          : auth.isEmployee
+                              ? Colors.teal.shade600
+                              : Colors.blueGrey.shade600,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      auth.isAdmin ? '👑 ADMIN (QUẢN TRỊ)' : '👤 KHÁCH HÀNG',
+                      auth.isAdmin
+                          ? '👑 ADMIN (QUẢN TRỊ)'
+                          : auth.isEmployee
+                              ? '💼 NHÂN VIÊN'
+                              : '👤 KHÁCH HÀNG',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 10,
@@ -113,31 +131,50 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
 
-                // Phân quyền: Chỉ hiển thị mục Quản trị khi User là ADMIN
-                if (auth.isAdmin) ...[
+                // Phân quyền: Hiển thị mục Quản trị khi User là ADMIN hoặc EMPLOYEE
+                if (auth.canManageOrders) ...[
                   const Divider(),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
-                      'QUẢN TRỊ HỆ THỐNG',
+                      auth.isAdmin ? 'QUẢN TRỊ HỆ THỐNG' : 'PHÂN HỆ NHÂN VIÊN',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple.shade700,
+                        color: auth.isAdmin ? Colors.deepPurple.shade700 : Colors.teal.shade700,
                         letterSpacing: 0.5,
                       ),
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.dashboard_customize_outlined, color: Colors.deepPurple),
-                    title: const Text(
-                      'Bảng điều khiển Admin',
-                      style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                  if (auth.isAdmin)
+                    ListTile(
+                      leading: const Icon(Icons.dashboard_customize_outlined, color: Colors.deepPurple),
+                      title: const Text(
+                        'Bảng điều khiển Admin',
+                        style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: const Text('Thống kê doanh thu & tồn kho'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        context.push('/admin');
+                      },
                     ),
-                    subtitle: const Text('Thống kê, đơn hàng & tồn kho'),
+                  ListTile(
+                    leading: Icon(
+                      Icons.list_alt_rounded,
+                      color: auth.isAdmin ? Colors.deepPurple : Colors.teal,
+                    ),
+                    title: Text(
+                      'Quản lý Đơn hàng',
+                      style: TextStyle(
+                        color: auth.isAdmin ? Colors.deepPurple : Colors.teal,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: const Text('Cập nhật trạng thái đơn hàng'),
                     onTap: () {
                       Navigator.pop(context);
-                      context.push('/admin');
+                      context.push('/admin/orders');
                     },
                   ),
                 ],

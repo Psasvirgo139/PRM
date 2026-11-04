@@ -30,10 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted) return;
 
     if (success) {
-      final role = auth.isAdmin ? 'Admin' : 'Khách hàng';
+      String roleTitle = 'Khách hàng';
+      if (auth.isAdmin) {
+        roleTitle = 'Admin (Quản trị viên)';
+      } else if (auth.isEmployee) {
+        roleTitle = 'Nhân viên (Employee/Staff)';
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Đăng nhập thành công với vai trò: $role'),
+          content: Text('Đăng nhập thành công với vai trò: $roleTitle'),
           backgroundColor: Colors.green,
         ),
       );
@@ -181,7 +187,23 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => _handleLogin('admin', 'admin123'),
                     icon: const Icon(Icons.admin_panel_settings_rounded),
-                    label: const Text('Đăng nhập nhanh Admin (admin/admin123)'),
+                    label: const Text('Đăng nhập Admin (admin / admin123)'),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Nút test nhanh vai trò Nhân viên (Employee / Staff)
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      foregroundColor: Colors.teal.shade700,
+                      side: BorderSide(color: Colors.teal.shade600, width: 1.5),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: auth.isLoading
+                        ? null
+                        : () => _handleLogin('employee', 'emp123'),
+                    icon: const Icon(Icons.badge_outlined),
+                    label: const Text('Đăng nhập Nhân viên (employee / emp123)'),
                   ),
                   const SizedBox(height: 10),
 
@@ -197,7 +219,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? null
                         : () => _handleLogin('customer', 'cust123'),
                     icon: const Icon(Icons.person_rounded),
-                    label: const Text('Đăng nhập nhanh Khách hàng (customer/cust123)'),
+                    label: const Text('Đăng nhập Khách hàng (customer / cust123)'),
                   ),
                 ],
               ),

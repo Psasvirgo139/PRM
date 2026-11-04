@@ -1,5 +1,5 @@
 import 'dart:math';
-import 'package:sqflite/sqflite.dart';
+
 import '../core/database/database_helper.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
@@ -30,7 +30,8 @@ class OrderRepository {
   /// Lấy danh sách sản phẩm trong giỏ hàng của user kèm thông tin chi tiết từ bảng products
   Future<List<CartItem>> getCartItems(int userId) async {
     final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
+    final res = await db.rawQuery(
+      '''
       SELECT 
         c.id as id,
         c.user_id as user_id,
@@ -43,7 +44,9 @@ class OrderRepository {
       FROM cart_items c
       INNER JOIN products p ON c.product_id = p.id
       WHERE c.user_id = ?
-    ''', [userId]);
+    ''',
+      [userId],
+    );
 
     return res.map((row) => CartItem.fromDbJoin(row)).toList();
   }
@@ -60,10 +63,13 @@ class OrderRepository {
 
     for (var p in products) {
       final productId = p['id'] as int;
-      await db.rawInsert('''
+      await db.rawInsert(
+        '''
         INSERT OR REPLACE INTO cart_items (user_id, product_id, quantity)
         VALUES (?, ?, ?)
-      ''', [userId, productId, 1]);
+      ''',
+        [userId, productId, 1],
+      );
     }
   }
 
@@ -80,7 +86,9 @@ class OrderRepository {
       );
 
       if (res.isEmpty) {
-        throw Exception('Sản phẩm "${item.productName}" không tồn tại trong hệ thống.');
+        throw Exception(
+          'Sản phẩm "${item.productName}" không tồn tại trong hệ thống.',
+        );
       }
 
       final stock = res.first['stock_quantity'] as int;
@@ -121,7 +129,8 @@ class OrderRepository {
     final subtotal = items.fold(0.0, (sum, item) => sum + item.subtotal);
     final finalAmount = max(0.0, subtotal - discount + shippingFee);
     final now = DateTime.now();
-    final orderCode = 'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}';
+    final orderCode =
+        'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}';
 
     Order? createdOrder;
 
@@ -252,6 +261,7 @@ class OrderRepository {
       final itemMaps = await db.query(
         'order_items',
         where: 'order_id = ?',
+        whereArgs: [orderId],
       );
       final items = itemMaps.map((m) => OrderItem.fromMap(m)).toList();
       result.add(Order.fromMap(map, items: items));

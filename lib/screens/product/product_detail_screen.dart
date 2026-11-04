@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/product_form_dialog.dart';
 
@@ -101,6 +102,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final auth = context.watch<AuthProvider>();
+    final cart = context.watch<CartProvider>();
     final productProvider = context.watch<ProductProvider>();
 
     // Lấy dữ liệu sản phẩm cập nhật mới nhất từ ProductProvider nếu có
@@ -154,7 +156,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.shopping_cart_outlined),
+            icon: Badge.count(
+              count: cart.totalCount,
+              isLabelVisible: cart.totalCount > 0,
+              backgroundColor: Colors.redAccent,
+              child: const Icon(Icons.shopping_cart_outlined),
+            ),
             tooltip: 'Giỏ hàng',
             onPressed: () => context.push('/cart'),
           ),
@@ -553,16 +560,34 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           side: BorderSide(color: theme.colorScheme.primary),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Đã thêm $_quantity x ${product.name} vào giỏ hàng'),
-                              action: SnackBarAction(
-                                label: 'Xem giỏ',
-                                onPressed: () => context.push('/cart'),
-                              ),
-                            ),
+                        onPressed: () async {
+                          final success = await cart.addToCart(
+                            productId: product.id!,
+                            quantity: _quantity,
                           );
+                          if (!context.mounted) return;
+                          if (success) {
+                            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Đã thêm $_quantity x ${product.name} vào giỏ hàng'),
+                                behavior: SnackBarBehavior.floating,
+                                action: SnackBarAction(
+                                  label: 'Xem giỏ',
+                                  textColor: Colors.amberAccent,
+                                  onPressed: () => context.push('/cart'),
+                                ),
+                              ),
+                            );
+                          } else if (cart.errorMessage != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(cart.errorMessage!),
+                                backgroundColor: Colors.redAccent,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                         icon: const Icon(Icons.add_shopping_cart, size: 18),
                         label: const Text('Thêm vào giỏ', style: TextStyle(fontSize: 13)),
@@ -580,16 +605,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Mua ngay $_quantity x ${product.name}'),
-                              action: SnackBarAction(
-                                label: 'Thanh toán',
-                                onPressed: () => context.push('/checkout'),
-                              ),
-                            ),
+                        onPressed: () async {
+                          final success = await cart.addToCart(
+                            productId: product.id!,
+                            quantity: _quantity,
                           );
+                          if (!context.mounted) return;
+                          if (success) {
+                            context.push('/cart');
+                          } else if (cart.errorMessage != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(cart.errorMessage!),
+                                backgroundColor: Colors.redAccent,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
                         },
                         child: const Text(
                           'Mua ngay',
