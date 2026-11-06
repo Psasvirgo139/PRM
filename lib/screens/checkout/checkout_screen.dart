@@ -57,9 +57,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // 2. Nạp danh sách sản phẩm cần thanh toán
     if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {
       orderProvider.setCheckoutItems(widget.initialItems!);
-    } else {
-      final userId = currentUser?.id ?? 2; // ID 2 là tài khoản customer mặc định trong seed
-      orderProvider.loadCheckoutItems(userId);
+    } else if (currentUser?.id != null) {
+      orderProvider.loadCheckoutItems(currentUser!.id!);
     }
   }
 
@@ -93,8 +92,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final router = GoRouter.of(context);
 
-    final userId = auth.currentUser?.id ?? 2;
+    // Kiểm tra đăng nhập bắt buộc đối với Khách hàng
+    if (!auth.isLoggedIn || auth.currentUser?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đăng nhập tài khoản Khách hàng để hoàn tất đặt hàng!'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/login');
+      return;
+    }
+
+    if (auth.canManageOrders) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài khoản Quản trị / Nhân viên không thể đặt hàng. Vui lòng đăng nhập tài khoản Khách hàng!'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final userId = auth.currentUser!.id!;
     final subtotal = orderProvider.subtotal;
     final shippingFee = _calculateShippingFee(subtotal);
 
@@ -142,6 +167,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (confirm != true) return;
+    if (!mounted) return;
 
     // THỰC THI TRANSACTION ĐẶT HÀNG
     final createdOrder = await orderProvider.placeOrder(
@@ -159,9 +185,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     if (createdOrder != null) {
       // Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
-      context.read<CartProvider>().loadCart();
+      cart.loadCart();
       // Đặt hàng thành công -> Chuyển sang Màn hình thành công
-      context.go('/order-success', extra: createdOrder);
+      router.go('/order-success', extra: createdOrder);
     } else {
       // Báo lỗi (ví dụ: Không đủ tồn kho hoặc lỗi transaction)
       final errorMsg = orderProvider.errorMessage ?? 'Không thể hoàn tất đơn hàng!';
@@ -218,7 +244,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             )
           : items.isEmpty
-              ? _buildEmptyCheckout(context, auth.currentUser?.id ?? 2)
+              ? _buildEmptyCheckout(context, auth.currentUser?.id ?? 3)
               : Form(
                   key: _formKey,
                   child: SingleChildScrollView(
@@ -386,6 +412,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ),
             ],
           ),
+          if (!isLoggedIn) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade800, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bạn chưa đăng nhập. Vui lòng đăng nhập để đơn hàng được lưu vào lịch sử cá nhân của bạn.',
+                      style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/login'),
+                    child: const Text('Đăng nhập', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const Divider(height: 24),
 
           // Họ tên

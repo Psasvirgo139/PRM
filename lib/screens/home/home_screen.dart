@@ -109,12 +109,13 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push(auth.isAdmin ? '/admin' : '/admin/orders'),
             ),
 
-          // Lịch sử đơn hàng
-          IconButton(
-            icon: const Icon(Icons.history_rounded),
-            tooltip: 'Đơn hàng của tôi',
-            onPressed: () => context.push('/orders'),
-          ),
+          // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
+          if (!auth.canManageOrders)
+            IconButton(
+              icon: const Icon(Icons.history_rounded),
+              tooltip: 'Đơn hàng của tôi',
+              onPressed: () => context.push('/orders'),
+            ),
 
           // Giỏ hàng kèm Badge số lượng
           IconButton(

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/order_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -356,6 +358,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Navigator.of(ctx).pop();
               await context.read<AuthProvider>().logout();
               if (mounted) {
+                context.read<OrderProvider>().clearUserOrders();
+                context.read<CartProvider>().clearLocalCart();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Đã đăng xuất'),
@@ -410,7 +414,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildGuestView(BuildContext context, AuthProvider auth) {
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(28.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -438,45 +442,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
+
+            // Nút đăng nhập / đăng ký chính
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.login_rounded),
+                label: const Text('Đăng nhập / Đăng ký', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => context.push('/login'),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Row(
+              children: [
+                Expanded(child: Divider()),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('Hoặc đăng nhập nhanh để kiểm tra', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ),
+                Expanded(child: Divider()),
+              ],
+            ),
+            const SizedBox(height: 12),
 
             // Nút đăng nhập tài khoản mẫu Customer
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
-                icon: const Icon(Icons.person),
-                label: const Text('Đăng nhập nhanh (Customer: customer)'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.person, color: Colors.blue),
+                label: const Text('Khách hàng (customer / cust123)'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () async {
-                  await auth.login('customer', 'cust123');
-                  _syncUserData();
-                },
+                onPressed: () => _handleQuickLogin(auth, 'customer', 'cust123'),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+
+            // Nút đăng nhập tài khoản mẫu Employee
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.badge_outlined, color: Colors.teal),
+                label: const Text('Nhân viên (employee / emp123)'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => _handleQuickLogin(auth, 'employee', 'emp123'),
+              ),
+            ),
+            const SizedBox(height: 8),
 
             // Nút đăng nhập tài khoản mẫu Admin
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.admin_panel_settings_outlined),
-                label: const Text('Đăng nhập nhanh (Admin: admin)'),
+                icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.deepPurple),
+                label: const Text('Quản trị viên (admin / admin123)'),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                onPressed: () async {
-                  await auth.login('admin', 'admin123');
-                  _syncUserData();
-                },
+                onPressed: () => _handleQuickLogin(auth, 'admin', 'admin123'),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _handleQuickLogin(AuthProvider auth, String username, String password) async {
+    final cart = context.read<CartProvider>();
+    final orderProv = context.read<OrderProvider>();
+    final success = await auth.login(username, password);
+    if (!mounted) return;
+    if (success) {
+      _syncUserData();
+      final user = auth.currentUser;
+      if (user?.id != null) {
+        cart.setUserId(user!.id!);
+        await cart.loadCart();
+        if (!mounted) return;
+        if (user.isCustomer) {
+          await orderProv.loadUserOrders(user.id!);
+        } else {
+          orderProv.clearUserOrders();
+        }
+      }
+    }
   }
 
   Widget _buildProfileHeader(dynamic user) {
@@ -551,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 4),
 
-          // Username & Role
+          // Username & Role Badge
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -563,15 +625,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: user.isAdmin ? Colors.red.shade50 : Colors.blue.shade50,
+                  color: user.isAdmin
+                      ? Colors.deepPurple.shade50
+                      : user.isEmployee
+                          ? Colors.teal.shade50
+                          : Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  user.isAdmin ? 'QUẢN TRỊ VIÊN' : 'KHÁCH HÀNG',
+                  user.isAdmin
+                      ? 'QUẢN TRỊ VIÊN'
+                      : user.isEmployee
+                          ? 'NHÂN VIÊN'
+                          : 'KHÁCH HÀNG',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: user.isAdmin ? Colors.red.shade700 : Colors.blue.shade700,
+                    color: user.isAdmin
+                        ? Colors.deepPurple.shade700
+                        : user.isEmployee
+                            ? Colors.teal.shade700
+                            : Colors.blue.shade700,
                   ),
                 ),
               ),
@@ -743,28 +817,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: const Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
               ),
               title: const Text('Bảng điều khiển Quản trị', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: const Text('Quản lý sản phẩm, danh mục và đơn hàng', style: TextStyle(fontSize: 12)),
+              subtitle: const Text('Quản lý sản phẩm, danh mục và thống kê', style: TextStyle(fontSize: 12)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/admin'),
             ),
           ],
 
-          const Divider(height: 1),
-          // Đường dẫn xem lịch sử đơn hàng
-          ListTile(
-            leading: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(10),
+          // Phân quyền:
+          // - Admin & Employee: Chỉ xem Quản lý đơn hàng hệ thống
+          // - Customer: Chỉ xem Lịch sử đơn hàng cá nhân
+          if (user.canManageOrders) ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.list_alt_rounded, color: Colors.teal),
               ),
-              child: const Icon(Icons.receipt_long, color: Colors.green),
+              title: const Text('Quản lý đơn hàng hệ thống', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Duyệt, xử lý và cập nhật trạng thái đơn hàng', style: TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/admin/orders'),
             ),
-            title: const Text('Lịch sử đơn hàng', style: TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: const Text('Xem các đơn hàng đã đặt', style: TextStyle(fontSize: 12)),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => context.push('/orders'),
-          ),
+          ] else ...[
+            const Divider(height: 1),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.receipt_long, color: Colors.green),
+              ),
+              title: const Text('Lịch sử đơn hàng', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Xem danh sách và chi tiết các đơn bạn đã đặt', style: TextStyle(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/orders'),
+            ),
+          ],
         ],
       ),
     );

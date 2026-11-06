@@ -8,7 +8,7 @@ class CartProvider extends ChangeNotifier {
   List<CartItem> _items = [];
   bool _isLoading = false;
   String? _errorMessage;
-  int _userId = 2; // Mặc định là ID 2 (tài khoản customer mẫu) khi chưa login
+  int _userId = 3; // Mặc định là ID 3 (tài khoản customer mẫu) khi chưa login
 
   List<CartItem> get items => _items;
   bool get isLoading => _isLoading;
@@ -149,6 +149,13 @@ class CartProvider extends ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
     }
+  }
+
+  /// Xóa bộ nhớ đệm giỏ hàng cục bộ (không xóa trong database) khi đăng xuất
+  void clearLocalCart() {
+    _items = [];
+    _userId = 3;
+    notifyListeners();
   }
 
   void clearErrorMessage() {

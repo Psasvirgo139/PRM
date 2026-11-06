@@ -114,14 +114,16 @@ class AppDrawer extends StatelessWidget {
                     context.push('/cart');
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: const Text('Đơn hàng của tôi'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    context.push('/orders');
-                  },
-                ),
+                // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
+                if (!auth.canManageOrders)
+                  ListTile(
+                    leading: const Icon(Icons.receipt_long_outlined),
+                    title: const Text('Đơn hàng của tôi'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      context.push('/orders');
+                    },
+                  ),
                 ListTile(
                   leading: const Icon(Icons.person_outline),
                   title: const Text('Thông tin cá nhân'),

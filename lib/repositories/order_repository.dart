@@ -252,6 +252,7 @@ class OrderRepository {
     final orderMaps = await db.query(
       'orders',
       where: 'user_id = ?',
+      whereArgs: [userId],
       orderBy: 'id DESC',
     );
 
@@ -267,5 +268,54 @@ class OrderRepository {
       result.add(Order.fromMap(map, items: items));
     }
     return result;
+  }
+
+  /// Khách hàng hủy đơn hàng (chỉ áp dụng với đơn PENDING)
+  /// Sử dụng Transaction để cập nhật status và hoàn trả tồn kho vào bảng products
+  Future<bool> cancelOrder(int orderId, int userId) async {
+    final db = await _dbHelper.database;
+
+    final orderRows = await db.query(
+      'orders',
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [orderId, userId],
+    );
+
+    if (orderRows.isEmpty) {
+      throw Exception('Không tìm thấy đơn hàng cần hủy!');
+    }
+
+    final currentStatus = orderRows.first['status'] as String;
+    if (currentStatus != 'PENDING') {
+      throw Exception('Chỉ có thể hủy đơn hàng đang ở trạng thái Chờ xác nhận (PENDING)!');
+    }
+
+    final itemRows = await db.query(
+      'order_items',
+      where: 'order_id = ?',
+      whereArgs: [orderId],
+    );
+
+    await db.transaction((txn) async {
+      // 1. Hoàn lại số lượng tồn kho cho các sản phẩm
+      for (final item in itemRows) {
+        final productId = item['product_id'] as int;
+        final quantity = item['quantity'] as int;
+        await txn.rawUpdate(
+          'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+          [quantity, productId],
+        );
+      }
+
+      // 2. Chuyển trạng thái đơn sang CANCELLED
+      await txn.update(
+        'orders',
+        {'status': 'CANCELLED'},
+        where: 'id = ?',
+        whereArgs: [orderId],
+      );
+    });
+
+    return true;
   }
 }

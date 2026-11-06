@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
+import '../../providers/order_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -25,11 +28,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin(String username, String password) async {
     final auth = context.read<AuthProvider>();
+    final cart = context.read<CartProvider>();
+    final orderProv = context.read<OrderProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final router = GoRouter.of(context);
+
     final success = await auth.login(username, password);
 
     if (!mounted) return;
 
     if (success) {
+      // Đồng bộ giỏ hàng và danh sách đơn hàng sau khi đăng nhập thành công
+      final currentUser = auth.currentUser;
+      if (currentUser?.id != null) {
+        cart.setUserId(currentUser!.id!);
+        await cart.loadCart();
+
+        if (currentUser.isCustomer) {
+          await orderProv.loadUserOrders(currentUser.id!);
+        } else {
+          orderProv.clearUserOrders();
+        }
+      }
+
+      if (!mounted) return;
+
       String roleTitle = 'Khách hàng';
       if (auth.isAdmin) {
         roleTitle = 'Admin (Quản trị viên)';
@@ -37,19 +60,19 @@ class _LoginScreenState extends State<LoginScreen> {
         roleTitle = 'Nhân viên (Employee/Staff)';
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text('Đăng nhập thành công với vai trò: $roleTitle'),
           backgroundColor: Colors.green,
         ),
       );
-      if (context.canPop()) {
-        context.pop();
+      if (router.canPop()) {
+        router.pop();
       } else {
-        context.go('/');
+        router.go('/');
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(
           content: Text(auth.errorMessage ?? 'Đăng nhập thất bại'),
           backgroundColor: Colors.red,
@@ -64,9 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Đăng nhập tài khoản'),
-      ),
+      appBar: AppBar(title: const Text('Đăng nhập tài khoản')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -105,8 +126,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: Icon(Icons.person_outline),
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Vui lòng nhập username' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Vui lòng nhập username'
+                        : null,
                   ),
                   const SizedBox(height: 16),
 
@@ -119,7 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
                         ),
                         onPressed: () {
                           setState(() => _obscurePassword = !_obscurePassword);
@@ -127,8 +151,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       border: const OutlineInputBorder(),
                     ),
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Vui lòng nhập mật khẩu' : null,
+                    validator: (v) => (v == null || v.trim().isEmpty)
+                        ? 'Vui lòng nhập mật khẩu'
+                        : null,
                   ),
                   const SizedBox(height: 24),
 
@@ -138,7 +163,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: Colors.deepPurple,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     onPressed: auth.isLoading
                         ? null
@@ -154,12 +181,44 @@ class _LoginScreenState extends State<LoginScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Text('ĐĂNG NHẬP', style: TextStyle(fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'ĐĂNG NHẬP',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
+
+                  // Nút chuyển sang Đăng ký
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Chưa có tài khoản? ',
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
+                      TextButton(
+                        onPressed: () => context.push('/register'),
+                        child: Text(
+                          'Đăng ký ngay',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 20),
                   const Row(
                     children: [
                       Expanded(child: Divider()),
@@ -167,7 +226,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         padding: EdgeInsets.symmetric(horizontal: 8),
                         child: Text(
                           'HOẶC TEST NHANH VAI TRÒ',
-                          style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                       Expanded(child: Divider()),
@@ -180,8 +243,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       foregroundColor: Colors.deepPurple,
-                      side: const BorderSide(color: Colors.deepPurple, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: const BorderSide(
+                        color: Colors.deepPurple,
+                        width: 1.5,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: auth.isLoading
                         ? null
@@ -197,13 +265,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       foregroundColor: Colors.teal.shade700,
                       side: BorderSide(color: Colors.teal.shade600, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: auth.isLoading
                         ? null
                         : () => _handleLogin('employee', 'emp123'),
                     icon: const Icon(Icons.badge_outlined),
-                    label: const Text('Đăng nhập Nhân viên (employee / emp123)'),
+                    label: const Text(
+                      'Đăng nhập Nhân viên (employee / emp123)',
+                    ),
                   ),
                   const SizedBox(height: 10),
 
@@ -213,13 +285,17 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       foregroundColor: theme.colorScheme.primary,
                       side: BorderSide(color: theme.colorScheme.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: auth.isLoading
                         ? null
                         : () => _handleLogin('customer', 'cust123'),
                     icon: const Icon(Icons.person_rounded),
-                    label: const Text('Đăng nhập Khách hàng (customer / cust123)'),
+                    label: const Text(
+                      'Đăng nhập Khách hàng (customer / cust123)',
+                    ),
                   ),
                 ],
               ),
