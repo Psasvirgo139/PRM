@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/responsive.dart';
 import '../../models/order.dart';
 
 class OrderSuccessScreen extends StatelessWidget {
@@ -44,43 +46,44 @@ class OrderSuccessScreen extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: AppColors.backgroundLight,
         appBar: AppBar(
           title: const Text('Đặt Hàng Thành Công'),
           centerTitle: true,
           automaticallyImplyLeading: false,
-          elevation: 0,
-          backgroundColor: Colors.white,
         ),
         body: effectiveOrder == null
             ? _buildNoOrderData(context)
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 20,
-                ),
-                child: Column(
-                  children: [
-                    // Header Thành công
-                    _buildSuccessHeader(effectiveOrder),
-                    const SizedBox(height: 16),
+            : ResponsiveContainer(
+                maxWidth: 680,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 20,
+                  ),
+                  child: Column(
+                    children: [
+                      // Header Thành công
+                      _buildSuccessHeader(effectiveOrder),
+                      const SizedBox(height: 16),
 
-                    // Thông tin mã đơn và tổng tiền
-                    _buildOrderSummaryCard(context, effectiveOrder),
-                    const SizedBox(height: 16),
+                      // Thông tin mã đơn và tổng tiền
+                      _buildOrderSummaryCard(context, effectiveOrder),
+                      const SizedBox(height: 16),
 
-                    // Thông tin người nhận
-                    _buildDeliveryInfoCard(effectiveOrder),
-                    const SizedBox(height: 16),
+                      // Thông tin người nhận
+                      _buildDeliveryInfoCard(effectiveOrder),
+                      const SizedBox(height: 16),
 
-                    // Chi tiết các sản phẩm đã đặt
-                    _buildOrderItemsCard(effectiveOrder),
-                    const SizedBox(height: 24),
+                      // Chi tiết các sản phẩm đã đặt
+                      _buildOrderItemsCard(effectiveOrder),
+                      const SizedBox(height: 24),
 
-                    // Các nút điều hướng
-                    _buildActionButtons(context),
-                    const SizedBox(height: 20),
-                  ],
+                      // Các nút điều hướng
+                      _buildActionButtons(context),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
       ),

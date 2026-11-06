@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/theme/app_theme.dart';
 import '../models/product.dart';
 import '../providers/product_provider.dart';
 
@@ -101,19 +102,21 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          behavior: SnackBarBehavior.floating,
           content: Text(
             isEditing
                 ? 'Đã cập nhật sản phẩm thành công'
                 : 'Đã thêm sản phẩm mới thành công',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.successGreen,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          behavior: SnackBarBehavior.floating,
           content: Text(provider.errorMessage ?? 'Có lỗi xảy ra'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.errorRed,
         ),
       );
     }
@@ -124,14 +127,19 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
     final categories = context.watch<ProductProvider>().categories;
 
     return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Icon(
             isEditing ? Icons.edit_note_rounded : Icons.add_box_rounded,
-            color: Colors.deepPurple,
+            color: AppColors.primaryOrange,
+            size: 26,
           ),
           const SizedBox(width: 8),
-          Text(isEditing ? 'Sửa thông tin sản phẩm' : 'Thêm sản phẩm mới'),
+          Text(
+            isEditing ? 'Sửa thông tin sản phẩm' : 'Thêm sản phẩm mới',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
         ],
       ),
       content: SizedBox(
@@ -278,12 +286,13 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
       actions: [
         TextButton(
           onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-          child: const Text('Hủy bỏ'),
+          child: const Text('Hủy bỏ', style: TextStyle(color: AppColors.textSecondary)),
         ),
         ElevatedButton(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurple,
+            backgroundColor: AppColors.primaryOrange,
             foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
           onPressed: _isSaving ? null : _submit,
           child: _isSaving
@@ -292,7 +301,7 @@ class _ProductFormDialogState extends State<ProductFormDialog> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : Text(isEditing ? 'Lưu thay đổi' : 'Thêm sản phẩm'),
+              : Text(isEditing ? 'Lưu thay đổi' : 'Thêm sản phẩm', style: const TextStyle(fontWeight: FontWeight.bold)),
         ),
       ],
     );

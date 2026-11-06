@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/product_form_dialog.dart';
+import '../../widgets/product_skeleton.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,40 +44,53 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Xác nhận xóa'),
+            Icon(Icons.warning_amber_rounded, color: AppColors.errorRed, size: 28),
+            SizedBox(width: 10),
+            Text('Xác nhận xóa', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
-          'Bạn có chắc chắn muốn xóa sản phẩm "${product.name}" khỏi hệ thống?\nHành động này không thể hoàn tác.',
+          'Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm "${product.name}" khỏi hệ thống?\nHành động này không thể hoàn tác.',
+          style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Hủy'),
+            child: const Text('Hủy bỏ', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.errorRed,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () async {
               Navigator.of(ctx).pop();
               final success = await context.read<ProductProvider>().deleteProduct(product.id!);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      success
-                          ? 'Đã xóa sản phẩm thành công'
-                          : 'Xóa sản phẩm thất bại',
+                    behavior: SnackBarBehavior.floating,
+                    content: Row(
+                      children: [
+                        Icon(
+                          success ? Icons.check_circle : Icons.error_outline,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          success ? 'Đã xóa sản phẩm thành công' : 'Xóa sản phẩm thất bại',
+                        ),
+                      ],
                     ),
-                    backgroundColor: success ? Colors.green : Colors.red,
+                    backgroundColor: success ? AppColors.successGreen : AppColors.errorRed,
                   ),
                 );
               }
             },
-            child: const Text('Xóa vĩnh viễn', style: TextStyle(color: Colors.white)),
+            child: const Text('Xóa vĩnh viễn'),
           ),
         ],
       ),
@@ -83,7 +99,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final auth = context.watch<AuthProvider>();
     final cart = context.watch<CartProvider>();
     final productProvider = context.watch<ProductProvider>();
@@ -93,18 +108,40 @@ class _HomeScreenState extends State<HomeScreen> {
     final isLoading = productProvider.isLoading;
     final selectedCatId = productProvider.selectedCategoryId;
 
+    final crossAxisCount = Responsive.gridCrossAxisCount(context);
+    final childAspectRatio = Responsive.gridChildAspectRatio(context);
+
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Text(
-          'PRM393 E-Shop',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        titleSpacing: 0,
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.orangeLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.bolt_rounded, color: AppColors.primaryOrange, size: 22),
+            ),
+            const SizedBox(width: 10),
+            RichText(
+              text: const TextSpan(
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, letterSpacing: -0.3),
+                children: [
+                  TextSpan(text: 'PRM', style: TextStyle(color: AppColors.textPrimary)),
+                  TextSpan(text: ' Shop', style: TextStyle(color: AppColors.primaryOrange)),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           // Lối tắt trang Quản trị (Admin / Employee)
           if (auth.canManageOrders)
             IconButton(
-              icon: const Icon(Icons.admin_panel_settings_rounded),
+              icon: const Icon(Icons.admin_panel_settings_outlined),
               tooltip: auth.isAdmin ? 'Admin Dashboard' : 'Quản lý đơn hàng',
               onPressed: () => context.push(auth.isAdmin ? '/admin' : '/admin/orders'),
             ),
@@ -112,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
           if (!auth.canManageOrders)
             IconButton(
-              icon: const Icon(Icons.history_rounded),
+              icon: const Icon(Icons.receipt_long_outlined),
               tooltip: 'Đơn hàng của tôi',
               onPressed: () => context.push('/orders'),
             ),
@@ -122,8 +159,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Badge.count(
               count: cart.totalCount,
               isLabelVisible: cart.totalCount > 0,
-              backgroundColor: Colors.redAccent,
-              child: const Icon(Icons.shopping_cart_outlined),
+              backgroundColor: AppColors.primaryOrange,
+              child: const Icon(Icons.shopping_bag_outlined),
             ),
             tooltip: 'Giỏ hàng',
             onPressed: () => context.push('/cart'),
@@ -131,220 +168,312 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Hồ sơ người dùng
           IconButton(
-            icon: Icon(auth.isLoggedIn ? Icons.account_circle : Icons.login),
+            icon: Icon(auth.isLoggedIn ? Icons.account_circle_outlined : Icons.login_rounded),
             tooltip: auth.isLoggedIn ? 'Tài khoản' : 'Đăng nhập',
             onPressed: () => context.push(auth.isLoggedIn ? '/profile' : '/login'),
           ),
+          const SizedBox(width: 6),
         ],
       ),
       drawer: const AppDrawer(),
       body: RefreshIndicator(
+        color: AppColors.primaryOrange,
         onRefresh: () async {
           await productProvider.loadCategories();
           await productProvider.loadProducts();
         },
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            // 1. Banner chào mừng / Phân hệ Quản trị Admin
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: auth.canManageOrders
-                    ? _buildAdminBanner(context, auth)
-                    : _buildCustomerBanner(auth),
+        child: ResponsiveContainer(
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              // 1. Banner chào mừng / Phân hệ Quản trị Admin
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                  child: auth.canManageOrders
+                      ? _buildAdminBanner(context, auth)
+                      : _buildCustomerBanner(auth),
+                ),
               ),
-            ),
 
-            // 2. Thanh tìm kiếm (Search Bar)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  decoration: InputDecoration(
-                    hintText: 'Tìm kiếm điện thoại, laptop, phụ kiện...',
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              productProvider.setSearchQuery('');
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
+              // 2. Thanh tìm kiếm (Search Bar M3 Style)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceWhite,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.borderLight),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0A000000),
+                          blurRadius: 10,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Tìm kiếm điện thoại, laptop, phụ kiện chính hãng...',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13.5),
+                        prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryOrange, size: 22),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.cancel_rounded, color: AppColors.textMuted, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  productProvider.setSearchQuery('');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                      ),
+                      onChanged: (val) {
+                        setState(() {});
+                        productProvider.setSearchQuery(val);
+                      },
                     ),
                   ),
-                  onChanged: (val) {
-                    setState(() {});
-                    productProvider.setSearchQuery(val);
-                  },
                 ),
               ),
-            ),
 
-            // 3. Thanh lọc Danh mục sản phẩm (Categories Horizontal List)
-            SliverToBoxAdapter(
-              child: SizedBox(
-                height: 48,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
-                    // Chip "Tất cả"
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FilterChip(
-                        selected: selectedCatId == null,
-                        label: const Text('Tất cả'),
-                        avatar: const Icon(Icons.apps_rounded, size: 18),
-                        onSelected: (_) {
-                          productProvider.selectCategory(null);
-                        },
-                      ),
-                    ),
-                    // Các danh mục từ SQLite Database
-                    ...categories.map(
-                      (cat) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: FilterChip(
-                          selected: selectedCatId == cat.id,
-                          label: Text(cat.name),
-                          avatar: Icon(
-                            cat.icon == 'phone_android'
-                                ? Icons.phone_android
-                                : cat.icon == 'laptop'
-                                    ? Icons.laptop
-                                    : Icons.headphones,
-                            size: 18,
-                          ),
-                          onSelected: (_) {
-                            productProvider.selectCategory(cat.id);
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 4. Tiêu đề danh sách sản phẩm
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Sản phẩm (${products.length})',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    if (auth.isAdmin)
-                      TextButton.icon(
-                        onPressed: () => ProductFormDialog.show(context),
-                        icon: const Icon(Icons.add, size: 18),
-                        label: const Text('Thêm mới'),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // 5. Grid hiển thị sản phẩm
-            if (isLoading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else if (products.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+              // 3. Thanh lọc Danh mục sản phẩm (Horizontal List)
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 44,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     children: [
-                      Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Không tìm thấy sản phẩm nào!',
-                        style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                      // Chip "Tất cả"
+                      _buildCategoryChip(
+                        label: 'Tất cả',
+                        icon: Icons.apps_rounded,
+                        isSelected: selectedCatId == null,
+                        onTap: () => productProvider.selectCategory(null),
                       ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          productProvider.setSearchQuery('');
-                          productProvider.selectCategory(null);
-                        },
-                        child: const Text('Đặt lại bộ lọc'),
+                      // Các danh mục động từ Database
+                      ...categories.map(
+                        (cat) => _buildCategoryChip(
+                          label: cat.name,
+                          icon: cat.icon == 'phone_android'
+                              ? Icons.phone_android_rounded
+                              : cat.icon == 'laptop'
+                                  ? Icons.laptop_mac_rounded
+                                  : Icons.headphones_rounded,
+                          isSelected: selectedCatId == cat.id,
+                          onTap: () => productProvider.selectCategory(cat.id),
+                        ),
                       ),
                     ],
                   ),
                 ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.65,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final product = products[index];
-                      return _buildProductCard(context, product, auth.isAdmin, cart);
-                    },
-                    childCount: products.length,
+              ),
+
+              // 4. Tiêu đề danh sách sản phẩm
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 4,
+                            height: 18,
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryOrange,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sản phẩm (${products.length})',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (auth.isAdmin)
+                        FilledButton.tonalIcon(
+                          onPressed: () => ProductFormDialog.show(context),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.orangeLight,
+                            foregroundColor: AppColors.primaryOrange,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: const Text('Thêm mới SP', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                    ],
                   ),
                 ),
               ),
-          ],
+
+              // 5. Grid sản phẩm hoặc Trạng thái rỗng / Loading
+              if (isLoading)
+                const SliverToBoxAdapter(
+                  child: ProductSkeletonGrid(itemCount: 6),
+                )
+              else if (products.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: AppColors.orangeLight,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.search_off_rounded,
+                              size: 48,
+                              color: AppColors.primaryOrange,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Không tìm thấy sản phẩm nào!',
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          const Text(
+                            'Vui lòng thử tìm từ khóa khác hoặc đặt lại bộ lọc',
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              _searchController.clear();
+                              productProvider.setSearchQuery('');
+                              productProvider.selectCategory(null);
+                            },
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Đặt lại bộ lọc'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  sliver: SliverGrid(
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: childAspectRatio,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                    ),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final product = products[index];
+                        return _buildProductCard(context, product, auth.isAdmin, cart);
+                      },
+                      childCount: products.length,
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
-      // Floating Action Button cho Admin thêm nhanh sản phẩm
+      // FAB thêm nhanh sản phẩm cho Admin
       floatingActionButton: auth.isAdmin
           ? FloatingActionButton.extended(
               onPressed: () => ProductFormDialog.show(context),
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: AppColors.primaryOrange,
               foregroundColor: Colors.white,
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm SP'),
+              elevation: 4,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Thêm SP', style: TextStyle(fontWeight: FontWeight.bold)),
             )
           : null,
     );
   }
 
-  // Banner hiển thị cho Admin / Employee
+  // Chip danh mục thiết kế sáng và tươi mới
+  Widget _buildCategoryChip({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.orangeLight : AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isSelected ? AppColors.primaryOrange : AppColors.borderLight,
+              width: isSelected ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppColors.primaryOrange : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primaryOrange : AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Banner hiển thị cho Admin / Employee (Xanh biển nhạt & Trắng)
   Widget _buildAdminBanner(BuildContext context, AuthProvider auth) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: auth.isAdmin
-              ? [Colors.deepPurple.shade700, Colors.deepPurple.shade500]
-              : [Colors.teal.shade700, Colors.teal.shade500],
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0284C7), Color(0xFF38BDF8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
           BoxShadow(
-            color: (auth.isAdmin ? Colors.deepPurple : Colors.teal).withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Color(0x280284C7),
+            blurRadius: 14,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -353,32 +482,35 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              Icon(
-                auth.isAdmin ? Icons.admin_panel_settings : Icons.badge,
-                color: Colors.white,
-                size: 24,
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  auth.isAdmin ? Icons.admin_panel_settings_rounded : Icons.badge_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  auth.isAdmin
-                      ? 'Phân Hệ Quản Trị (Admin)'
-                      : 'Phân Hệ Nhân Viên (Employee)',
+                  auth.isAdmin ? 'Phân Hệ Quản Trị Viên (Admin)' : 'Phân Hệ Nhân Viên',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w800,
                     fontSize: 16,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            auth.isAdmin
-                ? 'Thống kê doanh thu, cảnh báo hết hàng, quản lý đơn hàng & sản phẩm.'
-                : 'Tiếp nhận, xử lý và cập nhật trạng thái đơn hàng của khách hàng.',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          const SizedBox(height: 8),
+          const Text(
+            'Quản lý hệ thống sản phẩm, theo dõi đơn hàng và cập nhật trạng thái kho tức thì.',
+            style: TextStyle(color: Colors.white, fontSize: 12.5, height: 1.3),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -390,19 +522,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: () => context.push('/admin'),
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
-                    foregroundColor: Colors.deepPurple,
+                    foregroundColor: AppColors.secondaryBlue,
                     visualDensity: VisualDensity.compact,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Admin Dashboard'),
+                  child: const Text('Bảng Điều Khiển Admin', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               FilledButton.tonal(
                 onPressed: () => context.push('/admin/orders'),
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.9),
-                  foregroundColor: auth.isAdmin ? Colors.deepPurple : Colors.teal,
+                  foregroundColor: AppColors.secondaryBlue,
                   visualDensity: VisualDensity.compact,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
-                child: const Text('Quản lý Đơn hàng'),
+                child: const Text('Quản Lý Đơn Hàng', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -411,22 +545,22 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Banner chào mừng cho khách hàng
+  // Banner chào mừng cho Khách hàng (Cam nhạt & Trắng tươi sáng)
   Widget _buildCustomerBanner(AuthProvider auth) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.deepPurple.shade600, Colors.deepPurple.shade400],
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFF7A30), Color(0xFFFF9E63)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.deepPurple.withValues(alpha: 0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Color(0x30FF7A30),
+            blurRadius: 14,
+            offset: Offset(0, 5),
           ),
         ],
       ),
@@ -436,95 +570,123 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  auth.isLoggedIn
-                      ? 'Xin chào, ${auth.currentUser?.fullName}!'
-                      : 'Chào mừng bạn đến với PRM393 E-Shop!',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_rounded, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      auth.isLoggedIn
+                          ? 'Xin chào, ${auth.currentUser?.fullName}!'
+                          : 'Chào mừng đến với PRM Shop!',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Thiết bị công nghệ chính hãng - Bảo hành toàn diện.',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
+                  'Thiết bị công nghệ chính hãng - Bảo hành toàn diện 12 tháng.',
+                  style: TextStyle(color: Colors.white, fontSize: 12),
                 ),
               ],
             ),
           ),
-          const Icon(
-            Icons.local_shipping_outlined,
-            color: Colors.white70,
-            size: 36,
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.22),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.shopping_bag_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // Thẻ hiển thị sản phẩm trong Grid
+  // Thẻ hiển thị sản phẩm tinh tế, sáng sủa
   Widget _buildProductCard(
     BuildContext context,
     Product product,
     bool isAdmin,
     CartProvider cart,
   ) {
-    final theme = Theme.of(context);
     final isOut = product.isOutOfStock;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x06000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () => context.push('/product/${product.id}', extra: product),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hình ảnh sản phẩm
+            // 1. Hình ảnh sản phẩm kèm Hero Animation
             Expanded(
               flex: 5,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  product.imageUrl.isNotEmpty
-                      ? Image.network(
-                          product.imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.grey.shade100,
-                            child: const Icon(
-                              Icons.image_not_supported,
-                              size: 40,
-                              color: Colors.grey,
+                  Hero(
+                    tag: 'product-img-${product.id}',
+                    child: Container(
+                      color: AppColors.borderSoft,
+                      child: product.imageUrl.isNotEmpty
+                          ? Image.network(
+                              product.imageUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                color: AppColors.borderSoft,
+                                child: const Icon(
+                                  Icons.image_not_supported_rounded,
+                                  size: 36,
+                                  color: AppColors.textMuted,
+                                ),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(Icons.devices_rounded, size: 40, color: AppColors.textMuted),
                             ),
-                          ),
-                        )
-                      : Container(
-                          color: Colors.grey.shade100,
-                          child: const Icon(Icons.devices, size: 40, color: Colors.grey),
-                        ),
+                    ),
+                  ),
 
-                  // Badge trạng thái tồn kho
+                  // Nhãn trạng thái tồn kho ở góc trên bên trái
                   Positioned(
                     top: 8,
                     left: 8,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
                       decoration: BoxDecoration(
                         color: isOut
-                            ? Colors.red.withValues(alpha: 0.9)
-                            : Colors.black54,
+                            ? AppColors.errorRed.withValues(alpha: 0.95)
+                            : AppColors.successGreen.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        isOut ? 'Hết hàng' : 'Kho: ${product.stockQuantity}',
+                        isOut ? 'Hết hàng' : 'Còn ${product.stockQuantity}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -533,11 +695,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Thông tin chi tiết sản phẩm
+            // 2. Chi tiết và Thao tác
             Expanded(
               flex: 5,
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -550,30 +712,30 @@ class _HomeScreenState extends State<HomeScreen> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w700,
                             fontSize: 13,
+                            color: AppColors.textPrimary,
+                            height: 1.25,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
                           CurrencyFormatter.format(product.price),
-                          style: TextStyle(
-                            color: theme.colorScheme.primary,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
+                          style: const TextStyle(
+                            color: AppColors.primaryOrange,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14.5,
                           ),
                         ),
                       ],
                     ),
 
-                    // Thao tác phân quyền:
-                    // 1. ADMIN: Cho phép Sửa và Xóa sản phẩm
-                    // 2. KHÁCH HÀNG: Cho phép Thêm vào giỏ hàng
+                    // Thao tác Admin (Sửa/Xóa) hoặc Khách hàng (Thêm giỏ)
                     if (isAdmin)
                       Container(
-                        padding: const EdgeInsets.only(top: 4),
-                        decoration: BoxDecoration(
-                          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                        padding: const EdgeInsets.only(top: 6),
+                        decoration: const BoxDecoration(
+                          border: Border(top: BorderSide(color: AppColors.borderSoft)),
                         ),
                         child: Row(
                           children: [
@@ -582,21 +744,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: OutlinedButton.styleFrom(
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
-                                  foregroundColor: Colors.deepPurple,
-                                  side: BorderSide(color: Colors.deepPurple.shade300),
+                                  foregroundColor: AppColors.secondaryBlue,
+                                  side: const BorderSide(color: AppColors.secondaryBlue, width: 1),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 onPressed: () {
                                   ProductFormDialog.show(context, product: product);
                                 },
-                                icon: const Icon(Icons.edit, size: 14),
-                                label: const Text('Sửa', style: TextStyle(fontSize: 11)),
+                                icon: const Icon(Icons.edit_rounded, size: 14),
+                                label: const Text('Sửa', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                               ),
                             ),
                             const SizedBox(width: 4),
                             IconButton(
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                              icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.errorRed),
                               tooltip: 'Xóa sản phẩm',
                               onPressed: () => _confirmDelete(context, product),
                             ),
@@ -606,11 +769,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     else
                       SizedBox(
                         width: double.infinity,
+                        height: 34,
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
                             visualDensity: VisualDensity.compact,
-                            backgroundColor: isOut ? Colors.grey.shade300 : Colors.deepPurple,
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                            backgroundColor: isOut ? AppColors.borderLight : AppColors.primaryOrange,
+                            foregroundColor: isOut ? AppColors.textMuted : Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -627,9 +792,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                       SnackBar(
                                         content: Text('Đã thêm "${product.name}" vào giỏ!'),
                                         behavior: SnackBarBehavior.floating,
+                                        backgroundColor: AppColors.textPrimary,
                                         action: SnackBarAction(
                                           label: 'Xem giỏ',
-                                          textColor: Colors.amberAccent,
+                                          textColor: AppColors.primaryOrange,
                                           onPressed: () => context.push('/cart'),
                                         ),
                                         duration: const Duration(seconds: 2),
@@ -639,16 +805,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(cart.errorMessage!),
-                                        backgroundColor: Colors.redAccent,
+                                        backgroundColor: AppColors.errorRed,
                                         behavior: SnackBarBehavior.floating,
                                       ),
                                     );
                                   }
                                 },
-                          icon: const Icon(Icons.add_shopping_cart, size: 14),
+                          icon: const Icon(Icons.add_shopping_cart_rounded, size: 15),
                           label: Text(
                             isOut ? 'Hết hàng' : 'Thêm giỏ',
-                            style: const TextStyle(fontSize: 11),
+                            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),

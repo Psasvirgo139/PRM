@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/responsive.dart';
 import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
@@ -449,7 +451,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple,
+                          color: AppColors.primaryOrange,
                         ),
                       ),
                     ],
@@ -481,7 +483,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     final user = auth.currentUser;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text(
           'Lịch sử đơn hàng',
@@ -499,25 +501,27 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
         ],
       ),
       // Phân quyền: CHỈ KHÁCH HÀNG (CUSTOMER) mới được xem lịch sử đơn hàng cá nhân
-      body: !auth.isLoggedIn || user == null
-          ? _buildNotLoggedIn(context)
-          : auth.canManageOrders
-              ? _buildAdminEmployeeRestricted(context, auth)
-              : DefaultTabController(
-                  length: 6,
-                  child: Column(
-                    children: [
-                      // Thanh Tab lọc theo trạng thái
-                      Container(
-                        color: Colors.white,
-                        child: TabBar(
-                          isScrollable: true,
-                          tabAlignment: TabAlignment.start,
-                          labelColor: Colors.deepPurple,
-                          unselectedLabelColor: Colors.grey.shade600,
-                          indicatorColor: Colors.deepPurple,
-                          indicatorWeight: 3,
-                          tabs: const [
+      body: ResponsiveContainer(
+        maxWidth: 900,
+        child: !auth.isLoggedIn || user == null
+            ? _buildNotLoggedIn(context)
+            : auth.canManageOrders
+                ? _buildAdminEmployeeRestricted(context, auth)
+                : DefaultTabController(
+                    length: 6,
+                    child: Column(
+                      children: [
+                        // Thanh Tab lọc theo trạng thái
+                        Container(
+                          color: Colors.white,
+                          child: TabBar(
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            labelColor: AppColors.primaryOrange,
+                            unselectedLabelColor: Colors.grey.shade600,
+                            indicatorColor: AppColors.primaryOrange,
+                            indicatorWeight: 3,
+                            tabs: const [
                             Tab(text: 'Tất cả'),
                             Tab(text: 'Chờ duyệt'),
                             Tab(text: 'Đang xử lý'),
@@ -544,6 +548,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                     ],
                   ),
                 ),
+      ),
     );
   }
 
