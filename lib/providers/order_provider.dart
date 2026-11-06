@@ -109,6 +109,10 @@ class OrderProvider extends ChangeNotifier {
 
       _lastCreatedOrder = order;
       _checkoutItems.clear(); // Xóa giỏ hàng trên giao diện sau khi thanh toán thành công
+      // Tải lại lịch sử đơn hàng của người dùng ngay lập tức để cập nhật dữ liệu mới nhất
+      try {
+        _userOrders = await _orderRepository.getOrdersByUserId(userId);
+      } catch (_) {}
       _isLoading = false;
       notifyListeners();
       return order;
@@ -123,6 +127,7 @@ class OrderProvider extends ChangeNotifier {
   /// Tải lịch sử đơn hàng của người dùng
   Future<void> loadUserOrders(int userId) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       _userOrders = await _orderRepository.getOrdersByUserId(userId);
@@ -135,7 +140,37 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  /// Hủy đơn hàng và hoàn trả tồn kho sản phẩm
+  Future<bool> cancelOrder(int orderId, int userId) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final success = await _orderRepository.cancelOrder(orderId, userId);
+      if (success) {
+        // Tải lại danh sách đơn hàng sau khi hủy
+        _userOrders = await _orderRepository.getOrdersByUserId(userId);
+      }
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   void clearErrorMessage() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Xóa danh sách đơn hàng đã nạp trong bộ nhớ khi đăng xuất hoặc đổi tài khoản
+  void clearUserOrders() {
+    _userOrders = [];
+    _lastCreatedOrder = null;
     _errorMessage = null;
     notifyListeners();
   }

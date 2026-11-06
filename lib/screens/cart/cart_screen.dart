@@ -135,7 +135,7 @@ class CartScreen extends StatelessWidget {
             child: Text(
               user != null
                   ? 'Giao tới: ${user.fullName} (${user.phone.isNotEmpty ? user.phone : 'Chưa có SĐT'})'
-                  : 'Giao tới: Khách hàng mẫu (Cầu Giấy, Hà Nội)',
+                  : 'Giao tới: Khách hàng (Đăng nhập để tự động điền)',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
@@ -353,7 +353,7 @@ class CartScreen extends StatelessWidget {
                               padding: const EdgeInsets.all(4),
                               constraints: const BoxConstraints(),
                               onPressed: isMaxStock
-                                  ? () {
+                                   ? () {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text('Kho chỉ còn tối đa ${item.availableStock} sản phẩm!'),
@@ -450,7 +450,7 @@ class CartScreen extends StatelessWidget {
             // Nút Thanh toán
             FilledButton.icon(
               onPressed: () {
-                context.push('/checkout');
+                context.push('/checkout', extra: cart.items);
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.deepPurple,

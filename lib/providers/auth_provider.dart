@@ -15,7 +15,9 @@ class AuthProvider extends ChangeNotifier {
 
   bool get isLoggedIn => _currentUser != null;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
+  bool get isEmployee => _currentUser?.isEmployee ?? false;
   bool get isCustomer => _currentUser?.isCustomer ?? false;
+  bool get canManageOrders => _currentUser?.canManageOrders ?? false;
 
   AuthProvider() {
     loadSavedUserSession();

@@ -66,6 +66,8 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> loadCategories() => fetchCategories();
+
   // Tải danh sách sản phẩm theo bộ lọc hiện tại
   Future<void> loadProducts() async {
     _isLoading = true;

@@ -6,7 +6,7 @@ class User {
   final String email;
   final String phone;
   final String address;
-  final String role; // 'ADMIN' or 'CUSTOMER'
+  final String role; // 'ADMIN', 'EMPLOYEE', or 'CUSTOMER'
   final String avatarUrl;
   final String createdAt;
 
@@ -24,7 +24,9 @@ class User {
   }) : createdAt = createdAt ?? DateTime.now().toIso8601String();
 
   bool get isAdmin => role.toUpperCase() == 'ADMIN';
+  bool get isEmployee => role.toUpperCase() == 'EMPLOYEE' || role.toUpperCase() == 'STAFF';
   bool get isCustomer => role.toUpperCase() == 'CUSTOMER';
+  bool get canManageOrders => isAdmin || isEmployee;
 
   Map<String, dynamic> toMap() {
     return {

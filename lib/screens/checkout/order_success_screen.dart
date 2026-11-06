@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
 import '../../core/utils/currency_formatter.dart';
 import '../../models/order.dart';
 
@@ -54,7 +55,10 @@ class OrderSuccessScreen extends StatelessWidget {
         body: effectiveOrder == null
             ? _buildNoOrderData(context)
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 20,
+                ),
                 child: Column(
                   children: [
                     // Header Thành công
@@ -90,7 +94,11 @@ class OrderSuccessScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
+            const Icon(
+              Icons.check_circle_outline,
+              size: 80,
+              color: Colors.green,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Đơn hàng của bạn đã được ghi nhận!',
@@ -117,7 +125,7 @@ class OrderSuccessScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -150,10 +158,7 @@ class OrderSuccessScreen extends StatelessWidget {
           Text(
             'Đơn hàng của bạn đã được tạo thành công và đang chờ xác nhận.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -168,7 +173,7 @@ class OrderSuccessScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -215,23 +220,15 @@ class OrderSuccessScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Thời gian tạo', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                'Thời gian tạo',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
               Text(
                 _formatDateTime(order.createdAt),
-                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Phương thức', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              Flexible(
-                child: Text(
-                  _getPaymentMethodLabel(order.paymentMethod),
-                  textAlign: TextAlign.right,
-                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
                 ),
               ),
             ],
@@ -240,9 +237,35 @@ class OrderSuccessScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Trạng thái', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                'Phương thức',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              Flexible(
+                child: Text(
+                  _getPaymentMethodLabel(order.paymentMethod),
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Trạng thái',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.amber.shade50,
                   borderRadius: BorderRadius.circular(12),
@@ -291,7 +314,7 @@ class OrderSuccessScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -302,7 +325,11 @@ class OrderSuccessScreen extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.local_shipping_outlined, color: Colors.deepPurple, size: 20),
+              Icon(
+                Icons.local_shipping_outlined,
+                color: Colors.deepPurple,
+                size: 20,
+              ),
               SizedBox(width: 8),
               Text(
                 'Thông tin nhận hàng',
@@ -319,7 +346,10 @@ class OrderSuccessScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   '${order.customerName} - ${order.phone}',
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
@@ -328,7 +358,11 @@ class OrderSuccessScreen extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on_outlined, size: 18, color: Colors.grey),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 18,
+                color: Colors.grey,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -348,7 +382,11 @@ class OrderSuccessScreen extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Ghi chú: ${order.note}',
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      color: Colors.grey.shade700,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ],
@@ -368,7 +406,7 @@ class OrderSuccessScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -382,7 +420,11 @@ class OrderSuccessScreen extends StatelessWidget {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.shopping_bag_outlined, color: Colors.deepPurple, size: 20),
+                  Icon(
+                    Icons.shopping_bag_outlined,
+                    color: Colors.deepPurple,
+                    size: 20,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Sản phẩm đã mua',
@@ -401,7 +443,7 @@ class OrderSuccessScreen extends StatelessWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: order.items.length,
-            separatorBuilder: (_, __) => const Divider(height: 16),
+            separatorBuilder: (_, _) => const Divider(height: 16),
             itemBuilder: (context, index) {
               final item = order.items[index];
               return Row(
@@ -413,7 +455,11 @@ class OrderSuccessScreen extends StatelessWidget {
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.devices, color: Colors.deepPurple, size: 24),
+                    child: const Icon(
+                      Icons.devices,
+                      color: Colors.deepPurple,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -424,19 +470,28 @@ class OrderSuccessScreen extends StatelessWidget {
                           item.productName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${CurrencyFormatter.format(item.productPrice)}  ×  ${item.quantity}',
-                          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Text(
                     CurrencyFormatter.format(item.subtotal),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               );
@@ -457,7 +512,9 @@ class OrderSuccessScreen extends StatelessWidget {
             onPressed: () => context.go('/'),
             style: FilledButton.styleFrom(
               backgroundColor: Colors.deepPurple,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.home_outlined),
             label: const Text(
@@ -475,7 +532,9 @@ class OrderSuccessScreen extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.deepPurple,
               side: const BorderSide(color: Colors.deepPurple),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             icon: const Icon(Icons.receipt_long_outlined),
             label: const Text(

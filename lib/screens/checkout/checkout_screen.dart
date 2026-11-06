@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
 import '../../core/utils/currency_formatter.dart';
 import '../../models/cart_item.dart';
-import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -56,9 +57,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     // 2. Nạp danh sách sản phẩm cần thanh toán
     if (widget.initialItems != null && widget.initialItems!.isNotEmpty) {
       orderProvider.setCheckoutItems(widget.initialItems!);
-    } else {
-      final userId = currentUser?.id ?? 2; // ID 2 là tài khoản customer mặc định trong seed
-      orderProvider.loadCheckoutItems(userId);
+    } else if (currentUser?.id != null) {
+      orderProvider.loadCheckoutItems(currentUser!.id!);
     }
   }
 
@@ -92,8 +92,34 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final orderProvider = Provider.of<OrderProvider>(context, listen: false);
+    final cart = Provider.of<CartProvider>(context, listen: false);
+    final router = GoRouter.of(context);
 
-    final userId = auth.currentUser?.id ?? 2;
+    // Kiểm tra đăng nhập bắt buộc đối với Khách hàng
+    if (!auth.isLoggedIn || auth.currentUser?.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đăng nhập tài khoản Khách hàng để hoàn tất đặt hàng!'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/login');
+      return;
+    }
+
+    if (auth.canManageOrders) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tài khoản Quản trị / Nhân viên không thể đặt hàng. Vui lòng đăng nhập tài khoản Khách hàng!'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final userId = auth.currentUser!.id!;
     final subtotal = orderProvider.subtotal;
     final shippingFee = _calculateShippingFee(subtotal);
 
@@ -112,11 +138,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hệ thống sẽ kiểm tra tồn kho và tạo đơn hàng cho ${orderProvider.checkoutItems.length} sản phẩm.'),
+            Text(
+              'Hệ thống sẽ kiểm tra tồn kho và tạo đơn hàng cho ${orderProvider.checkoutItems.length} sản phẩm.',
+            ),
             const SizedBox(height: 10),
             Text(
               'Tổng tiền: ${CurrencyFormatter.format(subtotal + shippingFee)}',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple, fontSize: 16),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -135,6 +167,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
 
     if (confirm != true) return;
+    if (!mounted) return;
 
     // THỰC THI TRANSACTION ĐẶT HÀNG
     final createdOrder = await orderProvider.placeOrder(
@@ -151,8 +184,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     if (!mounted) return;
 
     if (createdOrder != null) {
+      // Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
+      cart.loadCart();
       // Đặt hàng thành công -> Chuyển sang Màn hình thành công
-      context.go('/order-success', extra: createdOrder);
+      router.go('/order-success', extra: createdOrder);
     } else {
       // Báo lỗi (ví dụ: Không đủ tồn kho hoặc lỗi transaction)
       final errorMsg = orderProvider.errorMessage ?? 'Không thể hoàn tất đơn hàng!';
@@ -160,7 +195,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           icon: const Icon(Icons.error_outline, color: Colors.red, size: 48),
-          title: const Text('Đặt hàng thất bại', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text(
+            'Đặt hàng thất bại',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           content: Text(
             errorMsg,
             textAlign: TextAlign.center,
@@ -206,11 +244,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               ),
             )
           : items.isEmpty
-              ? _buildEmptyCheckout(context, auth.currentUser?.id ?? 2)
+              ? _buildEmptyCheckout(context, auth.currentUser?.id ?? 3)
               : Form(
                   key: _formKey,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -251,7 +292,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -260,11 +301,23 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStepItem(icon: Icons.shopping_cart, title: '1. Giỏ hàng', isDone: true),
+          _buildStepItem(
+            icon: Icons.shopping_cart,
+            title: '1. Giỏ hàng',
+            isDone: true,
+          ),
           Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
-          _buildStepItem(icon: Icons.payment, title: '2. Thanh toán', isActive: true),
+          _buildStepItem(
+            icon: Icons.payment,
+            title: '2. Thanh toán',
+            isActive: true,
+          ),
           Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey.shade400),
-          _buildStepItem(icon: Icons.check_circle_outline, title: '3. Hoàn tất', isPending: true),
+          _buildStepItem(
+            icon: Icons.check_circle_outline,
+            title: '3. Hoàn tất',
+            isPending: true,
+          ),
         ],
       ),
     );
@@ -305,7 +358,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -316,7 +369,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.location_on_outlined, color: Colors.deepPurple, size: 22),
+              const Icon(
+                Icons.location_on_outlined,
+                color: Colors.deepPurple,
+                size: 22,
+              ),
               const SizedBox(width: 8),
               const Text(
                 'Địa chỉ nhận hàng',
@@ -325,11 +382,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               const Spacer(),
               if (isLoggedIn)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.shade50,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200, width: 0.8),
+                    border: Border.all(
+                      color: Colors.green.shade200,
+                      width: 0.8,
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -338,13 +401,44 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       const SizedBox(width: 4),
                       Text(
                         'Đã tự động điền',
-                        style: TextStyle(fontSize: 11, color: Colors.green.shade800, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.green.shade800,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
             ],
           ),
+          if (!isLoggedIn) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade800, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bạn chưa đăng nhập. Vui lòng đăng nhập để đơn hàng được lưu vào lịch sử cá nhân của bạn.',
+                      style: TextStyle(color: Colors.orange.shade900, fontSize: 12),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.push('/login'),
+                    child: const Text('Đăng nhập', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const Divider(height: 24),
 
           // Họ tên
@@ -353,10 +447,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             decoration: InputDecoration(
               labelText: 'Họ và tên người nhận *',
               prefixIcon: const Icon(Icons.person_outline, size: 20),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
-            validator: (val) => (val == null || val.trim().isEmpty) ? 'Vui lòng nhập họ tên' : null,
+            validator: (val) => (val == null || val.trim().isEmpty)
+                ? 'Vui lòng nhập họ tên'
+                : null,
           ),
           const SizedBox(height: 12),
 
@@ -367,12 +468,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             decoration: InputDecoration(
               labelText: 'Số điện thoại liên hệ *',
               prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
             validator: (val) {
-              if (val == null || val.trim().isEmpty) return 'Vui lòng nhập số điện thoại';
-              if (val.trim().length < 9) return 'Số điện thoại không hợp lệ';
+              if (val == null || val.trim().isEmpty) {
+                return 'Vui lòng nhập số điện thoại';
+              }
+              if (val.trim().length < 9) {
+                return 'Số điện thoại không hợp lệ';
+              }
               return null;
             },
           ),
@@ -386,10 +496,17 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               labelText: 'Địa chỉ giao hàng (Số nhà, đường, phường/xã...) *',
               prefixIcon: const Icon(Icons.home_outlined, size: 20),
               alignLabelWithHint: true,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
-            validator: (val) => (val == null || val.trim().isEmpty) ? 'Vui lòng nhập địa chỉ nhận hàng' : null,
+            validator: (val) => (val == null || val.trim().isEmpty)
+                ? 'Vui lòng nhập địa chỉ nhận hàng'
+                : null,
           ),
           const SizedBox(height: 12),
 
@@ -399,8 +516,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             decoration: InputDecoration(
               labelText: 'Ghi chú cho shipper (tuỳ chọn)',
               prefixIcon: const Icon(Icons.note_alt_outlined, size: 20),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
             ),
           ),
         ],
@@ -416,7 +538,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -478,7 +600,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.deepPurple.shade50.withOpacity(0.5) : Colors.transparent,
+          color: isSelected
+              ? Colors.deepPurple.shade50.withValues(alpha: 0.5)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? Colors.deepPurple : Colors.grey.shade300,
@@ -513,10 +637,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
             ),
+            // ignore: deprecated_member_use
             Radio<String>(
               value: value,
+              // ignore: deprecated_member_use
               groupValue: _selectedPaymentMethod,
               activeColor: Colors.deepPurple,
+              // ignore: deprecated_member_use
               onChanged: (val) {
                 if (val != null) setState(() => _selectedPaymentMethod = val);
               },
@@ -535,7 +662,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -549,7 +676,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.inventory_2_outlined, color: Colors.deepPurple, size: 22),
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    color: Colors.deepPurple,
+                    size: 22,
+                  ),
                   SizedBox(width: 8),
                   Text(
                     'Kiểm tra đơn hàng',
@@ -568,7 +699,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: items.length,
-            separatorBuilder: (_, __) => const Divider(height: 16),
+            separatorBuilder: (_, _) => const Divider(height: 16),
             itemBuilder: (context, index) {
               final item = items[index];
               final isStockLow = item.availableStock < 5;
@@ -584,7 +715,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.devices, color: Colors.deepPurple, size: 28),
+                    child: const Icon(
+                      Icons.devices,
+                      color: Colors.deepPurple,
+                      size: 28,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -595,22 +730,35 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           item.productName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             Text(
                               CurrencyFormatter.format(item.productPrice),
-                              style: const TextStyle(color: Colors.deepPurple, fontSize: 12, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: Colors.deepPurple,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               '  ×  ${item.quantity}',
-                              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
                             ),
                             const Spacer(),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: isOutOfStock
                                     ? Colors.red.shade50
@@ -642,7 +790,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   const SizedBox(width: 12),
                   Text(
                     CurrencyFormatter.format(item.subtotal),
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               );
@@ -653,7 +804,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPriceSummary(double subtotal, double shippingFee, double finalAmount) {
+  Widget _buildPriceSummary(
+    double subtotal,
+    double shippingFee,
+    double finalAmount,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -661,7 +816,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -672,17 +827,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Tạm tính tiền hàng', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              Text(CurrencyFormatter.format(subtotal), style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+              const Text(
+                'Tạm tính tiền hàng',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              Text(
+                CurrencyFormatter.format(subtotal),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Phí vận chuyển', style: TextStyle(color: Colors.grey, fontSize: 13)),
+              const Text(
+                'Phí vận chuyển',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
               Text(
-                shippingFee == 0 ? 'Miễn phí' : CurrencyFormatter.format(shippingFee),
+                shippingFee == 0
+                    ? 'Miễn phí'
+                    : CurrencyFormatter.format(shippingFee),
                 style: TextStyle(
                   fontWeight: FontWeight.w500,
                   fontSize: 13,
@@ -695,8 +864,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Giảm giá', style: TextStyle(color: Colors.grey, fontSize: 13)),
-              Text('0 ₫', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+              Text(
+                'Giảm giá',
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              Text(
+                '0 ₫',
+                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+              ),
             ],
           ),
           const Divider(height: 20),
@@ -730,7 +905,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.remove_shopping_cart_outlined, size: 70, color: Colors.grey),
+            const Icon(
+              Icons.remove_shopping_cart_outlined,
+              size: 70,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Không có sản phẩm nào trong giỏ hàng để thanh toán',
@@ -750,7 +929,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Đã nạp 2 sản phẩm mẫu vào giỏ hàng để test!'),
+                      content: Text(
+                        'Đã nạp 2 sản phẩm mẫu vào giỏ hàng để test!',
+                      ),
                       behavior: SnackBarBehavior.floating,
                     ),
                   );
@@ -778,7 +959,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, -3),
           ),
@@ -815,7 +996,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.deepPurple,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 icon: const Icon(Icons.check_circle_outline),
                 label: const Text(
