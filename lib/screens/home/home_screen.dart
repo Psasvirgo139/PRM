@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
+import '../../widgets/home_carousel_banner.dart';
 import '../../widgets/product_form_dialog.dart';
 import '../../widgets/product_skeleton.dart';
 
@@ -186,20 +187,10 @@ class _HomeScreenState extends State<HomeScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // 1. Banner chào mừng / Phân hệ Quản trị Admin
+              // 1. Thanh tìm kiếm (Search Bar M3 Style ở trên cùng)
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                  child: auth.canManageOrders
-                      ? _buildAdminBanner(context, auth)
-                      : _buildCustomerBanner(auth),
-                ),
-              ),
-
-              // 2. Thanh tìm kiếm (Search Bar M3 Style)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppColors.surfaceWhite,
@@ -242,7 +233,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // 3. Thanh lọc Danh mục sản phẩm (Horizontal List)
+              // 2. Banner quản trị (chỉ hiện khi user là Admin/Employee)
+              if (auth.canManageOrders)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _buildAdminBanner(context, auth),
+                  ),
+                ),
+
+              // 3. Carousel Slider Khuyến Mãi (Chuẩn CellphoneS như ảnh mẫu)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 14),
+                  child: HomeCarouselBanner(),
+                ),
+              ),
+
+              // 4. Thanh lọc Danh mục sản phẩm (Horizontal List)
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 44,
@@ -539,73 +547,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: const Text('Quản Lý Đơn Hàng', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Banner chào mừng cho Khách hàng (Cam nhạt & Trắng tươi sáng)
-  Widget _buildCustomerBanner(AuthProvider auth) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFF7A30), Color(0xFFFF9E63)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x30FF7A30),
-            blurRadius: 14,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.verified_rounded, color: Colors.white, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      auth.isLoggedIn
-                          ? 'Xin chào, ${auth.currentUser?.fullName}!'
-                          : 'Chào mừng đến với PRM Shop!',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Thiết bị công nghệ chính hãng - Bảo hành toàn diện 12 tháng.',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.shopping_bag_rounded,
-              color: Colors.white,
-              size: 28,
-            ),
           ),
         ],
       ),

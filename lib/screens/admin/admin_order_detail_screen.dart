@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/responsive.dart';
 import '../../providers/admin_provider.dart';
 
 class AdminOrderDetailScreen extends StatefulWidget {
@@ -29,6 +31,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: Text(
           order != null ? order.orderCode : 'Chi tiết đơn hàng',
@@ -36,12 +39,14 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
         ),
       ),
       body: adminProvider.isLoadingDetail || order == null
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+          : ResponsiveContainer(
+              maxWidth: 800,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                   // ── Current Status ──
                   _buildStatusSection(order.status, colorScheme),
                   const SizedBox(height: 20),
@@ -207,6 +212,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                 ],
               ),
             ),
+          ),
     );
   }
 
