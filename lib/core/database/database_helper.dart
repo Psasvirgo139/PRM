@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -114,13 +114,72 @@ class DatabaseHelper {
       )
     ''');
 
+    // 7. Vouchers (Hệ thống Voucher)
+    await db.execute('''
+      CREATE TABLE vouchers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        discount_type TEXT NOT NULL,
+        discount_value REAL NOT NULL,
+        min_order_value REAL DEFAULT 0,
+        max_discount REAL DEFAULT 0,
+        color_hex TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // 8. User Vouchers (Kho voucher cá nhân)
+    await db.execute('''
+      CREATE TABLE user_vouchers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        voucher_id INTEGER NOT NULL,
+        is_used INTEGER NOT NULL DEFAULT 0,
+        used_at TEXT,
+        acquired_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (voucher_id) REFERENCES vouchers (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 9. User Spins (Tổng lượt quay khả dụng)
+    await db.execute('''
+      CREATE TABLE user_spins (
+        user_id INTEGER PRIMARY KEY,
+        spins_left INTEGER NOT NULL DEFAULT 1,
+        total_spins_used INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 10. User Daily Quests (Tiến độ nhiệm vụ mỗi ngày)
+    await db.execute('''
+      CREATE TABLE user_daily_quests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        quest_date TEXT NOT NULL,
+        login_claimed INTEGER NOT NULL DEFAULT 0,
+        order_spins_earned INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(user_id, quest_date)
+      )
+    ''');
+
     // Seed data
     await _seedInitialData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 4) {
+    if (oldVersion < 5) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
+      await db.execute('DROP TABLE IF EXISTS user_daily_quests');
+      await db.execute('DROP TABLE IF EXISTS user_spins');
+      await db.execute('DROP TABLE IF EXISTS user_vouchers');
+      await db.execute('DROP TABLE IF EXISTS vouchers');
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
       await db.execute('DROP TABLE IF EXISTS cart_items');
@@ -386,6 +445,120 @@ class DatabaseHelper {
       'product_price': 27490000.0,
       'quantity': 1,
       'subtotal': 27490000.0,
+    });
+
+    // 7. Seed Vouchers hệ thống
+    final initialVouchers = [
+      {
+        'code': 'LUCKY20K',
+        'title': 'Voucher May Mắn 20K',
+        'description': 'Giảm trực tiếp 20.000₫ cho đơn hàng từ 200.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 20000.0,
+        'min_order_value': 200000.0,
+        'max_discount': 0.0,
+        'color_hex': '#FF8A00',
+        'created_at': now,
+      },
+      {
+        'code': 'FLASH30K',
+        'title': 'Voucher Chớp Nhoáng 30K',
+        'description': 'Giảm 30.000₫ cho đơn hàng từ 250.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 30000.0,
+        'min_order_value': 250000.0,
+        'max_discount': 0.0,
+        'color_hex': '#C2185B',
+        'created_at': now,
+      },
+      {
+        'code': 'SUPER50K',
+        'title': 'Siêu Voucher 50K',
+        'description': 'Giảm 50.000₫ cho đơn hàng công nghệ từ 500.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 50000.0,
+        'min_order_value': 500000.0,
+        'max_discount': 0.0,
+        'color_hex': '#E53935',
+        'created_at': now,
+      },
+      {
+        'code': 'VIP100K',
+        'title': 'Voucher Đại Gia 100K',
+        'description': 'Giảm 100.000₫ cho đơn hàng VIP từ 1.000.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 100000.0,
+        'min_order_value': 1000000.0,
+        'max_discount': 0.0,
+        'color_hex': '#FFA000',
+        'created_at': now,
+      },
+      {
+        'code': 'SALE10',
+        'title': 'Giảm Giá 10% Toàn Sàn',
+        'description': 'Giảm 10% tối đa 100.000₫ cho đơn từ 300.000₫',
+        'discount_type': 'PERCENT',
+        'discount_value': 10.0,
+        'min_order_value': 300000.0,
+        'max_discount': 100000.0,
+        'color_hex': '#7B1FA2',
+        'created_at': now,
+      },
+      {
+        'code': 'FREESHIP',
+        'title': 'Miễn Phí Vận Chuyển',
+        'description': 'Tài trợ tối đa 30.000₫ phí giao hàng cho đơn từ 150.000₫',
+        'discount_type': 'FREE_SHIP',
+        'discount_value': 30000.0,
+        'min_order_value': 150000.0,
+        'max_discount': 30000.0,
+        'color_hex': '#0288D1',
+        'created_at': now,
+      },
+    ];
+
+    for (var v in initialVouchers) {
+      await db.insert('vouchers', v);
+    }
+
+    // 8. Seed Lượt quay mặc định cho các Users
+    await db.insert('user_spins', {
+      'user_id': 1, // admin
+      'spins_left': 1,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 2, // employee
+      'spins_left': 1,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 3, // customer (cho sẵn 3 lượt để test quay thoải mái)
+      'spins_left': 3,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 4, // customer2
+      'spins_left': 2,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+
+    // 9. Seed sẵn 1 Voucher mẫu vào kho của user customer (id=3) để demo
+    await db.insert('user_vouchers', {
+      'user_id': 3,
+      'voucher_id': 1, // LUCKY20K
+      'is_used': 0,
+      'acquired_at': now,
+    });
+    await db.insert('user_vouchers', {
+      'user_id': 3,
+      'voucher_id': 6, // FREESHIP
+      'is_used': 0,
+      'acquired_at': now,
     });
   }
 

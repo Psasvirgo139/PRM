@@ -618,8 +618,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   onPressed: isOutOfStock
                       ? null
                       : () async {
-                          await _handleAddToCart(context, product, cart);
-                          if (context.mounted) context.push('/cart');
+                          final success = await _handleAddToCart(context, product, cart);
+                          if (success && context.mounted) context.push('/cart');
                         },
                   child: const Text('Mua ngay', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
@@ -832,8 +832,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () async {
-                        await _handleAddToCart(context, product, cart);
-                        if (context.mounted) context.push('/cart');
+                        final success = await _handleAddToCart(context, product, cart);
+                        if (success && context.mounted) context.push('/cart');
                       },
                       child: const Text('Mua ngay', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
@@ -844,12 +844,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Future<void> _handleAddToCart(BuildContext context, Product product, CartProvider cart) async {
+  Future<bool> _handleAddToCart(BuildContext context, Product product, CartProvider cart) async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/login');
+      return false;
+    }
+
     final success = await cart.addToCart(
       productId: product.id!,
       quantity: _quantity,
     );
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
 
     if (success) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -865,6 +877,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       );
+      return true;
     } else if (cart.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -873,6 +886,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           backgroundColor: AppColors.errorRed,
         ),
       );
+      return false;
     }
+    return false;
   }
 }
