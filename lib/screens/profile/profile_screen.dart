@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/responsive.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
@@ -161,7 +163,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? Colors.deepPurple : Colors.transparent,
+                              color: isSelected ? AppColors.primaryOrange : Colors.transparent,
                               width: 3,
                             ),
                           ),
@@ -199,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: FilledButton(
                     onPressed: () => Navigator.of(ctx).pop(),
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
+                      backgroundColor: AppColors.primaryOrange,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
                     child: const Text('Xác nhận ảnh đại diện'),
@@ -230,7 +232,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(
               children: [
-                Icon(Icons.lock_reset, color: Colors.deepPurple),
+                Icon(Icons.lock_reset, color: AppColors.primaryOrange),
                 SizedBox(width: 8),
                 Text('Đổi mật khẩu', style: TextStyle(fontSize: 18)),
               ],
@@ -300,7 +302,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: const Text('Hủy'),
               ),
               FilledButton(
-                style: FilledButton.styleFrom(backgroundColor: Colors.deepPurple),
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
                 onPressed: () async {
                   if (!passFormKey.currentState!.validate()) return;
 
@@ -381,34 +383,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = auth.currentUser;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text('Tài khoản & Hồ sơ', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
-      body: user == null
-          ? _buildGuestView(context, auth)
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  // Header: Avatar + Tên + Role
-                  _buildProfileHeader(user),
-                  const SizedBox(height: 16),
+      body: ResponsiveContainer(
+        maxWidth: 680,
+        child: user == null
+            ? _buildGuestView(context, auth)
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Header: Avatar + Tên + Role
+                    _buildProfileHeader(user),
+                    const SizedBox(height: 16),
 
-                  // Form sửa thông tin
-                  _buildEditProfileCard(),
-                  const SizedBox(height: 16),
+                    // Form sửa thông tin
+                    _buildEditProfileCard(),
+                    const SizedBox(height: 16),
 
-                  // Menu bảo mật & cài đặt
-                  _buildSecurityAndActionsCard(user),
-                  const SizedBox(height: 24),
+                    // Menu bảo mật & cài đặt
+                    _buildSecurityAndActionsCard(user),
+                    const SizedBox(height: 24),
 
-                  // Nút Đăng xuất
-                  _buildLogoutButton(),
-                  const SizedBox(height: 32),
-                ],
+                    // Nút Đăng xuất
+                    _buildLogoutButton(),
+                    const SizedBox(height: 32),
+                  ],
+                ),
               ),
-            ),
+      ),
     );
   }
 
@@ -421,26 +426,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
+              decoration: const BoxDecoration(
+                color: AppColors.orangeLight,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.person_outline_rounded,
                 size: 72,
-                color: Colors.deepPurple,
+                color: AppColors.primaryOrange,
               ),
             ),
             const SizedBox(height: 20),
             const Text(
               'Bạn chưa đăng nhập',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Đăng nhập để lưu địa chỉ nhận hàng, theo dõi đơn hàng và giỏ hàng của bạn.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 24),
 
@@ -451,7 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: const Icon(Icons.login_rounded),
                 label: const Text('Đăng nhập / Đăng ký', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: AppColors.primaryOrange,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -505,9 +510,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                icon: const Icon(Icons.admin_panel_settings_outlined, color: Colors.deepPurple),
+                icon: const Icon(Icons.admin_panel_settings_outlined, color: AppColors.secondaryBlue),
                 label: const Text('Quản trị viên (admin / admin123)'),
                 style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.secondaryBlue,
+                  side: const BorderSide(color: AppColors.secondaryBlue),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -566,11 +573,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.deepPurple.shade100, width: 3),
+                  border: Border.all(color: AppColors.orangeLight, width: 3),
                 ),
                 child: CircleAvatar(
                   radius: 46,
-                  backgroundColor: Colors.deepPurple.shade50,
+                  backgroundColor: AppColors.orangeLight,
                   backgroundImage: (avatar != null && avatar.isNotEmpty)
                       ? NetworkImage(avatar)
                       : null,
@@ -580,7 +587,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           style: const TextStyle(
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
+                            color: AppColors.primaryOrange,
                           ),
                         )
                       : null,
@@ -594,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.deepPurple,
+                      color: AppColors.primaryOrange,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -626,10 +633,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: user.isAdmin
-                      ? Colors.deepPurple.shade50
+                      ? AppColors.orangeLight
                       : user.isEmployee
-                          ? Colors.teal.shade50
-                          : Colors.blue.shade50,
+                          ? AppColors.blueLight
+                          : AppColors.mintLight,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -642,10 +649,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: user.isAdmin
-                        ? Colors.deepPurple.shade700
+                        ? AppColors.primaryOrange
                         : user.isEmployee
-                            ? Colors.teal.shade700
-                            : Colors.blue.shade700,
+                            ? AppColors.secondaryBlue
+                            : AppColors.accentMint,
                   ),
                 ),
               ),
@@ -677,7 +684,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             const Row(
               children: [
-                Icon(Icons.edit_note, color: Colors.deepPurple),
+                Icon(Icons.edit_note, color: AppColors.primaryOrange),
                 SizedBox(width: 8),
                 Text(
                   'Thông tin nhận hàng',
@@ -750,7 +757,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: FilledButton.icon(
                 onPressed: _isSaving ? null : _handleSaveProfile,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
+                  backgroundColor: AppColors.primaryOrange,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

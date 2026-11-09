@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
+import '../../core/utils/responsive.dart';
 import '../../providers/admin_provider.dart';
 import '../../models/order.dart';
 
@@ -46,103 +48,107 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     }).toList();
 
     return Scaffold(
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: const Text(
           'Quản lý Đơn hàng',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
-      body: Column(
-        children: [
-          // ── Search Bar ──
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Tìm theo mã đơn, tên khách, SĐT...',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear_rounded),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (val) {
-                setState(() => _searchQuery = val.trim());
-              },
-            ),
-          ),
-
-          // ── Filter Tabs ──
-          _buildFilterTabs(adminProvider),
-
-          // ── Results count summary ──
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Tổng: ${filteredOrders.length} đơn hàng',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                    fontWeight: FontWeight.w500,
+      body: ResponsiveContainer(
+        maxWidth: 1000,
+        child: Column(
+          children: [
+            // ── Search Bar ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Tìm theo mã đơn, tên khách, SĐT...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
                 ),
-                if (_searchQuery.isNotEmpty)
+                onChanged: (val) {
+                  setState(() => _searchQuery = val.trim());
+                },
+              ),
+            ),
+
+            // ── Filter Tabs ──
+            _buildFilterTabs(adminProvider),
+
+            // ── Results count summary ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Text(
-                    'Đang tìm: "$_searchQuery"',
+                    'Tổng: ${filteredOrders.length} đơn hàng',
                     style: TextStyle(
-                      fontSize: 12,
-                      color: Theme.of(context).colorScheme.primary,
-                      fontStyle: FontStyle.italic,
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-
-          // ── Orders List ──
-          Expanded(
-            child: adminProvider.isLoadingOrders
-                ? const Center(child: CircularProgressIndicator())
-                : filteredOrders.isEmpty
-                    ? _buildEmptyState()
-                    : RefreshIndicator(
-                        onRefresh: () => adminProvider.loadOrders(
-                          status: adminProvider.statusFilter,
-                        ),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredOrders.length,
-                          itemBuilder: (context, index) {
-                            return _OrderCard(
-                              order: filteredOrders[index],
-                              onTap: () {
-                                context.push(
-                                  '/admin/orders/${filteredOrders[index].id}',
-                                );
-                              },
-                            );
-                          },
-                        ),
+                  if (_searchQuery.isNotEmpty)
+                    Text(
+                      'Đang tìm: "$_searchQuery"',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.primary,
+                        fontStyle: FontStyle.italic,
                       ),
-          ),
-        ],
+                    ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+
+            // ── Orders List ──
+            Expanded(
+              child: adminProvider.isLoadingOrders
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredOrders.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: () => adminProvider.loadOrders(
+                            status: adminProvider.statusFilter,
+                          ),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filteredOrders.length,
+                            itemBuilder: (context, index) {
+                              return _OrderCard(
+                                order: filteredOrders[index],
+                                onTap: () {
+                                  context.push(
+                                    '/admin/orders/${filteredOrders[index].id}',
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }

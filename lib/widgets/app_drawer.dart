@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+
+import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
 
 class AppDrawer extends StatelessWidget {
@@ -8,87 +10,89 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final auth = context.watch<AuthProvider>();
     final user = auth.currentUser;
 
     return Drawer(
+      backgroundColor: AppColors.surfaceWhite,
       child: Column(
         children: [
-          // Header hiển thị thông tin User / Quyền hạn
-          UserAccountsDrawerHeader(
-            decoration: BoxDecoration(
+          // Header hiển thị thông tin User / Quyền hạn với màu sắc tươi sáng
+          Container(
+            padding: EdgeInsets.fromLTRB(18, MediaQuery.paddingOf(context).top + 20, 18, 20),
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: auth.isAdmin
-                    ? [Colors.deepPurple.shade700, Colors.deepPurple.shade900]
-                    : auth.isEmployee
-                        ? [Colors.teal.shade700, Colors.teal.shade900]
-                        : [theme.colorScheme.primary, theme.colorScheme.primaryContainer],
+                colors: [Color(0xFFFF7A30), Color(0xFFFF9E63)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              backgroundImage: (user?.avatarUrl.isNotEmpty ?? false)
-                  ? NetworkImage(user!.avatarUrl)
-                  : null,
-              child: (user?.avatarUrl.isEmpty ?? true)
-                  ? Icon(
-                      auth.isAdmin
-                          ? Icons.admin_panel_settings
-                          : auth.isEmployee
-                              ? Icons.badge
-                              : Icons.person,
-                      size: 40,
-                      color: auth.isAdmin
-                          ? Colors.deepPurple
-                          : auth.isEmployee
-                              ? Colors.teal
-                              : theme.colorScheme.primary,
-                    )
-                  : null,
-            ),
-            accountName: Text(
-              user?.fullName ?? 'Khách ghé thăm',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            accountEmail: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+            child: Row(
               children: [
-                Text(
-                  user != null
-                      ? (user.email.isNotEmpty ? user.email : '@${user.username}')
-                      : 'Đăng nhập để trải nghiệm đầy đủ tính năng',
-                  style: const TextStyle(fontSize: 12),
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Colors.white,
+                  backgroundImage: (user?.avatarUrl.isNotEmpty ?? false)
+                      ? NetworkImage(user!.avatarUrl)
+                      : null,
+                  child: (user?.avatarUrl.isEmpty ?? true)
+                      ? const Icon(
+                          Icons.person_rounded,
+                          size: 34,
+                          color: AppColors.primaryOrange,
+                        )
+                      : null,
                 ),
-                if (auth.isLoggedIn) ...[
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: auth.isAdmin
-                          ? Colors.amber.shade700
-                          : auth.isEmployee
-                              ? Colors.teal.shade600
-                              : Colors.blueGrey.shade600,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      auth.isAdmin
-                          ? '👑 ADMIN (QUẢN TRỊ)'
-                          : auth.isEmployee
-                              ? '💼 NHÂN VIÊN'
-                              : '👤 KHÁCH HÀNG',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        user?.fullName ?? 'Khách ghé thăm',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
+                      const SizedBox(height: 2),
+                      Text(
+                        user != null
+                            ? (user.email.isNotEmpty ? user.email : '@${user.username}')
+                            : 'Đăng nhập để xem giỏ & đơn hàng',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (auth.isLoggedIn) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            auth.isAdmin
+                                ? '👑 QUẢN TRỊ VIÊN'
+                                : auth.isEmployee
+                                    ? '💼 NHÂN VIÊN'
+                                    : '👤 KHÁCH HÀNG',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -96,84 +100,80 @@ class AppDrawer extends StatelessWidget {
           // Danh sách các Menu mục
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                ListTile(
-                  leading: const Icon(Icons.storefront_rounded),
-                  title: const Text('Trang chủ / Sản phẩm'),
+                _buildDrawerItem(
+                  icon: Icons.storefront_rounded,
+                  iconColor: AppColors.primaryOrange,
+                  title: 'Trang chủ / Sản phẩm',
                   onTap: () {
                     Navigator.pop(context);
                     context.go('/');
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.shopping_cart_outlined),
-                  title: const Text('Giỏ hàng'),
+                _buildDrawerItem(
+                  icon: Icons.shopping_bag_outlined,
+                  iconColor: AppColors.primaryOrange,
+                  title: 'Giỏ hàng',
                   onTap: () {
                     Navigator.pop(context);
                     context.push('/cart');
                   },
                 ),
-                // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
                 if (!auth.canManageOrders)
-                  ListTile(
-                    leading: const Icon(Icons.receipt_long_outlined),
-                    title: const Text('Đơn hàng của tôi'),
+                  _buildDrawerItem(
+                    icon: Icons.receipt_long_outlined,
+                    iconColor: AppColors.secondaryBlue,
+                    title: 'Đơn hàng của tôi',
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/orders');
                     },
                   ),
-                ListTile(
-                  leading: const Icon(Icons.person_outline),
-                  title: const Text('Thông tin cá nhân'),
+                _buildDrawerItem(
+                  icon: Icons.person_outline_rounded,
+                  iconColor: AppColors.secondaryBlue,
+                  title: 'Thông tin cá nhân',
                   onTap: () {
                     Navigator.pop(context);
                     context.push('/profile');
                   },
                 ),
 
-                // Phân quyền: Hiển thị mục Quản trị khi User là ADMIN hoặc EMPLOYEE
+                // Phân quyền Quản trị (Admin & Employee)
                 if (auth.canManageOrders) ...[
-                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Divider(color: AppColors.borderSoft),
+                  ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                     child: Text(
                       auth.isAdmin ? 'QUẢN TRỊ HỆ THỐNG' : 'PHÂN HỆ NHÂN VIÊN',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: auth.isAdmin ? Colors.deepPurple.shade700 : Colors.teal.shade700,
-                        letterSpacing: 0.5,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.secondaryBlue,
+                        letterSpacing: 0.8,
                       ),
                     ),
                   ),
                   if (auth.isAdmin)
-                    ListTile(
-                      leading: const Icon(Icons.dashboard_customize_outlined, color: Colors.deepPurple),
-                      title: const Text(
-                        'Bảng điều khiển Admin',
-                        style: TextStyle(color: Colors.deepPurple, fontWeight: FontWeight.w600),
-                      ),
-                      subtitle: const Text('Thống kê doanh thu & tồn kho'),
+                    _buildDrawerItem(
+                      icon: Icons.dashboard_outlined,
+                      iconColor: AppColors.secondaryBlue,
+                      title: 'Bảng điều khiển Admin',
+                      subtitle: 'Thống kê doanh thu & tồn kho',
                       onTap: () {
                         Navigator.pop(context);
                         context.push('/admin');
                       },
                     ),
-                  ListTile(
-                    leading: Icon(
-                      Icons.list_alt_rounded,
-                      color: auth.isAdmin ? Colors.deepPurple : Colors.teal,
-                    ),
-                    title: Text(
-                      'Quản lý Đơn hàng',
-                      style: TextStyle(
-                        color: auth.isAdmin ? Colors.deepPurple : Colors.teal,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: const Text('Cập nhật trạng thái đơn hàng'),
+                  _buildDrawerItem(
+                    icon: Icons.list_alt_rounded,
+                    iconColor: AppColors.secondaryBlue,
+                    title: 'Quản lý Đơn hàng',
+                    subtitle: 'Cập nhật trạng thái xử lý',
                     onTap: () {
                       Navigator.pop(context);
                       context.push('/admin/orders');
@@ -184,26 +184,29 @@ class AppDrawer extends StatelessWidget {
             ),
           ),
 
-          const Divider(height: 1),
+          const Divider(height: 1, color: AppColors.borderSoft),
 
           // Footer: Nút Đăng nhập / Đăng xuất
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(16.0),
             child: auth.isLoggedIn
                 ? ListTile(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    tileColor: Colors.red.shade50,
-                    leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    tileColor: AppColors.errorLight.withValues(alpha: 0.5),
+                    leading: const Icon(Icons.logout_rounded, color: AppColors.errorRed),
                     title: const Text(
-                      'Đăng xuất',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                      'Đăng xuất tài khoản',
+                      style: TextStyle(color: AppColors.errorRed, fontWeight: FontWeight.bold, fontSize: 13.5),
                     ),
                     onTap: () async {
                       Navigator.pop(context);
                       await context.read<AuthProvider>().logout();
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã đăng xuất tài khoản')),
+                          const SnackBar(
+                            content: Text('Đã đăng xuất tài khoản thành công'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
                         );
                       }
                     },
@@ -211,20 +214,56 @@ class AppDrawer extends StatelessWidget {
                 : ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size.fromHeight(48),
-                      backgroundColor: theme.colorScheme.primary,
+                      backgroundColor: AppColors.primaryOrange,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
                     ),
                     onPressed: () {
                       Navigator.pop(context);
                       context.push('/login');
                     },
                     icon: const Icon(Icons.login_rounded),
-                    label: const Text('Đăng nhập tài khoản'),
+                    label: const Text('Đăng nhập tài khoản', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: iconColor, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+              subtitle,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            )
+          : null,
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 18),
+      onTap: onTap,
     );
   }
 }
