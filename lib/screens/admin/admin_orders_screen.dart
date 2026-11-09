@@ -369,11 +369,16 @@ class _OrderCard extends StatelessWidget {
   }
 
   String _getPaymentLabel(String method) {
-    switch (method) {
+    switch (method.toUpperCase()) {
+      case 'PAYOS':
+        return 'Cổng payOS (VietQR)';
       case 'COD':
         return 'Thanh toán khi nhận hàng (COD)';
       case 'BANK_TRANSFER':
+      case 'BANKING':
         return 'Chuyển khoản ngân hàng';
+      case 'MOMO':
+        return 'Ví MoMo';
       default:
         return method;
     }

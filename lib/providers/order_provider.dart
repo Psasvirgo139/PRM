@@ -162,6 +162,19 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
+  /// Cập nhật trạng thái đơn hàng (ví dụ: chuyển từ PENDING sang PROCESSING sau khi PayOS thành công)
+  Future<void> updateOrderStatus(int orderId, String newStatus, {int? userId}) async {
+    try {
+      await _orderRepository.updateOrderStatus(orderId, newStatus);
+      if (userId != null) {
+        _userOrders = await _orderRepository.getOrdersByUserId(userId);
+      }
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Lỗi cập nhật trạng thái đơn: $e');
+    }
+  }
+
   void clearErrorMessage() {
     _errorMessage = null;
     notifyListeners();

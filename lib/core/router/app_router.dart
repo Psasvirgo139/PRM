@@ -13,7 +13,9 @@ import '../../screens/admin/admin_order_detail_screen.dart';
 import '../../screens/product/product_detail_screen.dart';
 
 import '../../screens/checkout/order_success_screen.dart';
+import '../../screens/checkout/payos_payment_screen.dart';
 import '../../models/order.dart';
+import '../../models/payos_payment_data.dart';
 import '../../models/cart_item.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -70,6 +72,15 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final items = state.extra as List<CartItem>?;
         return CheckoutScreen(initialItems: items);
+      },
+    ),
+    GoRoute(
+      path: '/payos-payment',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        final order = extra['order'] as Order;
+        final payosData = extra['payosData'] as PayOSPaymentData;
+        return PayOSPaymentScreen(order: order, payosData: payosData);
       },
     ),
     GoRoute(
