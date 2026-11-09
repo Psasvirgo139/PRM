@@ -271,3 +271,4 @@ class CompareProvider extends ChangeNotifier {
     }
   }
 }
+

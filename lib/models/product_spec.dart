@@ -114,3 +114,4 @@ class SpecComparisonResult {
     this.bestProductIndex,
   });
 }
+
