@@ -14,6 +14,7 @@ import '../../screens/product/product_detail_screen.dart';
 
 import '../../screens/checkout/order_success_screen.dart';
 import '../../screens/checkout/payos_payment_screen.dart';
+import '../../screens/compare/product_compare_screen.dart';
 import '../../models/order.dart';
 import '../../models/payos_payment_data.dart';
 import '../../models/cart_item.dart';
@@ -93,6 +94,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/orders',
       builder: (context, state) => const OrderHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/compare',
+      builder: (context, state) => const ProductCompareScreen(),
     ),
   ],
 );

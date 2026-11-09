@@ -120,6 +120,16 @@ class AppDrawer extends StatelessWidget {
                     context.push('/cart');
                   },
                 ),
+                _buildDrawerItem(
+                  icon: Icons.compare_arrows_rounded,
+                  iconColor: AppColors.primaryOrange,
+                  title: 'So sánh sản phẩm',
+                  subtitle: 'Đối đầu thông số kỹ thuật (Smart Specs)',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/compare');
+                  },
+                ),
                 if (!auth.canManageOrders)
                   _buildDrawerItem(
                     icon: Icons.receipt_long_outlined,

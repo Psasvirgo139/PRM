@@ -8,8 +8,10 @@ import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/compare_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
+import '../../widgets/compare_bottom_bar.dart';
 import '../../widgets/home_carousel_banner.dart';
 import '../../widgets/product_form_dialog.dart';
 import '../../widgets/product_skeleton.dart';
@@ -155,6 +157,20 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push('/orders'),
             ),
 
+          // So sánh đối đầu thông số kỹ thuật (Smart Specs)
+          Consumer<CompareProvider>(
+            builder: (_, compare, _) => IconButton(
+              icon: Badge.count(
+                count: compare.count,
+                isLabelVisible: compare.count > 0,
+                backgroundColor: AppColors.primaryOrange,
+                child: const Icon(Icons.compare_arrows_rounded),
+              ),
+              tooltip: 'So sánh đối đầu',
+              onPressed: () => context.push('/compare'),
+            ),
+          ),
+
           // Giỏ hàng kèm Badge số lượng
           IconButton(
             icon: Badge.count(
@@ -177,6 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       drawer: const AppDrawer(),
+      bottomNavigationBar: const CompareBottomBar(),
       body: RefreshIndicator(
         color: AppColors.primaryOrange,
         onRefresh: () async {
@@ -630,6 +647,60 @@ class _HomeScreenState extends State<HomeScreen> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
+                    ),
+                  ),
+
+                  // Nút So sánh nhanh ở góc trên bên phải
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Consumer<CompareProvider>(
+                      builder: (_, compare, _) {
+                        final isComparing = compare.isInCompare(product.id ?? 0);
+                        return Tooltip(
+                          message: isComparing ? 'Đã thêm so sánh (Bấm để gỡ)' : 'So sánh đối đầu sản phẩm',
+                          child: InkWell(
+                            onTap: () async {
+                              if (isComparing) {
+                                compare.removeProduct(product.id!);
+                              } else {
+                                final ok = await compare.addProduct(product);
+                                if (!ok && compare.errorMessage != null && context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(compare.errorMessage!),
+                                      behavior: SnackBarBehavior.floating,
+                                      duration: const Duration(seconds: 2),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: isComparing
+                                    ? AppColors.primaryOrange
+                                    : Colors.white.withValues(alpha: 0.88),
+                                shape: BoxShape.circle,
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: Color(0x18000000),
+                                    blurRadius: 4,
+                                    offset: Offset(0, 1),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                Icons.compare_arrows_rounded,
+                                size: 16,
+                                color: isComparing ? Colors.white : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],

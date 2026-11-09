@@ -8,6 +8,7 @@ import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/compare_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/product_form_dialog.dart';
 
@@ -172,6 +173,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               );
             },
           ),
+          Consumer<CompareProvider>(
+            builder: (_, compare, _) => IconButton(
+              icon: Badge.count(
+                count: compare.count,
+                isLabelVisible: compare.count > 0,
+                backgroundColor: AppColors.primaryOrange,
+                child: const Icon(Icons.compare_arrows_rounded),
+              ),
+              tooltip: 'So sánh đối đầu',
+              onPressed: () => context.push('/compare'),
+            ),
+          ),
           IconButton(
             icon: Badge.count(
               count: cart.totalCount,
@@ -278,6 +291,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
                 // Thông số
                 _buildSpecificationsCard(product, categoryName),
+                const SizedBox(height: 20),
+
+                // So sánh đối đầu
+                _buildComparisonActionSection(context, product, categoryName),
               ],
             ),
           ),
@@ -316,6 +333,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 _buildDescriptionSection(product),
                 const SizedBox(height: 20),
                 _buildSpecificationsCard(product, categoryName),
+                const SizedBox(height: 20),
+                _buildComparisonActionSection(context, product, categoryName),
                 const SizedBox(height: 90),
               ],
             ),
@@ -755,6 +774,97 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: AppColors.textPrimary)),
       ],
+    );
+  }
+
+  // Khung hành động So sánh thông số kỹ thuật đối đầu
+  Widget _buildComparisonActionSection(BuildContext context, Product product, String categoryName) {
+    final compare = context.watch<CompareProvider>();
+    final isInCompare = compare.isInCompare(product.id ?? 0);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.compare_arrows_rounded,
+                  color: AppColors.primaryOrange,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'So Sánh Thông Số Đối Đầu',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    Text(
+                      'Đặt lên bàn cân Chip, RAM, Pin, Màn hình song song',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Nút bấm thêm vào so sánh
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: isInCompare ? Colors.green : AppColors.primaryOrange,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (!isInCompare) {
+                  await compare.addProduct(product);
+                }
+                if (context.mounted) {
+                  context.push('/compare');
+                }
+              },
+              icon: Icon(
+                isInCompare ? Icons.check_circle_rounded : Icons.add_chart_rounded,
+                size: 18,
+              ),
+              label: Text(
+                isInCompare
+                    ? 'Đang so sánh (${compare.count}/3) — Mở xem ngay'
+                    : 'Thêm vào bảng so sánh đối đầu',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

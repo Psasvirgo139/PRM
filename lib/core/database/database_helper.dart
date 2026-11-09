@@ -22,7 +22,45 @@ class DatabaseHelper {
       version: 4,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
+      onOpen: _onOpen,
     );
+  }
+
+  Future<void> _onOpen(Database db) async {
+    // Đảm bảo bổ sung các thiết bị demo so sánh đối đầu nếu chưa có
+    try {
+      final res = await db.query('products', where: 'name LIKE ?', whereArgs: ['%Xiaomi 14 Ultra%']);
+      if (res.isEmpty) {
+        final now = DateTime.now().toIso8601String();
+        await db.insert('products', {
+          'category_id': 1,
+          'name': 'Xiaomi 14 Ultra 512GB',
+          'description': 'Camera Leica Summilux cảm biến 1 inch, chip Snapdragon 8 Gen 3, sạc siêu nhanh 90W.',
+          'price': 24990000.0,
+          'stock_quantity': 10,
+          'image_url': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500',
+          'created_at': now,
+        });
+        await db.insert('products', {
+          'category_id': 2,
+          'name': 'Dell XPS 13 9340 (2024)',
+          'description': 'Intel Core Ultra 7, màn hình 13.4 inch OLED 3K cảm ứng, phím tàng hình sang trọng, 1.19kg.',
+          'price': 34990000.0,
+          'stock_quantity': 6,
+          'image_url': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500',
+          'created_at': now,
+        });
+        await db.insert('products', {
+          'category_id': 2,
+          'name': 'Asus ROG Zephyrus G14 (2024)',
+          'description': 'Ryzen 9 8945HS, RTX 4060, 32GB RAM, màn hình OLED 120Hz 3K Nebula, thiết kế nhôm CNC.',
+          'price': 39990000.0,
+          'stock_quantity': 4,
+          'image_url': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500',
+          'created_at': now,
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -242,6 +280,33 @@ class DatabaseHelper {
         'price': 2190000.0,
         'stock_quantity': 0, // Mock hết hàng để test validate tồn kho
         'image_url': 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500',
+        'created_at': now,
+      },
+      {
+        'category_id': 1,
+        'name': 'Xiaomi 14 Ultra 512GB',
+        'description': 'Camera Leica Summilux cảm biến 1 inch, chip Snapdragon 8 Gen 3, sạc siêu nhanh 90W.',
+        'price': 24990000.0,
+        'stock_quantity': 10,
+        'image_url': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500',
+        'created_at': now,
+      },
+      {
+        'category_id': 2,
+        'name': 'Dell XPS 13 9340 (2024)',
+        'description': 'Intel Core Ultra 7, màn hình 13.4 inch OLED 3K cảm ứng, phím tàng hình sang trọng, 1.19kg.',
+        'price': 34990000.0,
+        'stock_quantity': 6,
+        'image_url': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500',
+        'created_at': now,
+      },
+      {
+        'category_id': 2,
+        'name': 'Asus ROG Zephyrus G14 (2024)',
+        'description': 'Ryzen 9 8945HS, RTX 4060, 32GB RAM, màn hình OLED 120Hz 3K Nebula, thiết kế nhôm CNC.',
+        'price': 39990000.0,
+        'stock_quantity': 4,
+        'image_url': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500',
         'created_at': now,
       },
     ];
