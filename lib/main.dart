@@ -12,6 +12,7 @@ import 'providers/admin_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/notification_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +56,14 @@ class MyApp extends StatelessWidget {
               cartProvider.setUserId(auth.currentUser!.id!);
             }
             return cartProvider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, NotificationProvider>(
+          create: (_) => NotificationProvider(),
+          update: (_, auth, notif) {
+            final provider = notif ?? NotificationProvider();
+            provider.setUserId(auth.currentUser?.id);
+            return provider;
           },
         ),
         // Các providers tiếp theo do các thành viên tích hợp:

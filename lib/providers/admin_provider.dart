@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../models/product.dart';
 import '../repositories/admin_repository.dart';
+import '../repositories/notification_repository.dart';
 
 class AdminProvider extends ChangeNotifier {
   final AdminRepository _repository = AdminRepository();
@@ -237,5 +238,20 @@ class AdminProvider extends ChangeNotifier {
   /// Đặt filter status và load lại danh sách
   void setStatusFilter(String? status) {
     loadOrders(status: status);
+  }
+
+  /// Tạo và gửi thông báo báo cáo tháng mới cho Quản trị viên
+  Future<bool> sendMonthlyReportNotification(String monthName, {int adminId = 1}) async {
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyAdminMonthlyReport(
+        adminId: adminId,
+        monthName: monthName,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error sending monthly report notification: $e');
+      return false;
+    }
   }
 }

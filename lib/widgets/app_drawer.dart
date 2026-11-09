@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/cart_provider.dart';
+import '../providers/notification_provider.dart';
+import '../providers/order_provider.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -11,6 +14,7 @@ class AppDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final notifProvider = context.watch<NotificationProvider>();
     final user = auth.currentUser;
 
     return Drawer(
@@ -112,6 +116,16 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
                 _buildDrawerItem(
+                  icon: Icons.notifications_outlined,
+                  iconColor: AppColors.primaryOrange,
+                  title: 'Thông báo',
+                  badgeCount: notifProvider.unreadCount,
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/notifications');
+                  },
+                ),
+                _buildDrawerItem(
                   icon: Icons.shopping_bag_outlined,
                   iconColor: AppColors.primaryOrange,
                   title: 'Giỏ hàng',
@@ -200,15 +214,21 @@ class AppDrawer extends StatelessWidget {
                     ),
                     onTap: () async {
                       Navigator.pop(context);
+                      final cart = context.read<CartProvider>();
+                      final orderProv = context.read<OrderProvider>();
+                      final notif = context.read<NotificationProvider>();
+                      final messenger = ScaffoldMessenger.of(context);
+                      
+                      cart.clearLocalCart();
+                      orderProv.clearUserOrders();
+                      notif.clearLocal();
                       await context.read<AuthProvider>().logout();
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Đã đăng xuất tài khoản thành công'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
+                      messenger.showSnackBar(
+                        const SnackBar(
+                          content: Text('Đã đăng xuất tài khoản thành công'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
                     },
                   )
                 : ElevatedButton.icon(
@@ -237,6 +257,7 @@ class AppDrawer extends StatelessWidget {
     required Color iconColor,
     required String title,
     String? subtitle,
+    int badgeCount = 0,
     required VoidCallback onTap,
   }) {
     return ListTile(
@@ -262,7 +283,23 @@ class AppDrawer extends StatelessWidget {
               style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
             )
           : null,
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 18),
+      trailing: badgeCount > 0
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppColors.primaryOrange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$badgeCount',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          : const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 18),
       onTap: onTap,
     );
   }

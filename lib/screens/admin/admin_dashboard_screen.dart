@@ -6,6 +6,7 @@ import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -37,6 +38,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          Consumer<NotificationProvider>(
+            builder: (context, notifProv, _) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    tooltip: 'Thông báo',
+                    onPressed: () => context.push('/notifications'),
+                  ),
+                  if (notifProv.unreadCount > 0)
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 16,
+                          minHeight: 16,
+                        ),
+                        child: Text(
+                          notifProv.unreadCount > 9 ? '9+' : '${notifProv.unreadCount}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           if (authProvider.isLoggedIn)
             IconButton(
               icon: const Icon(Icons.logout_rounded),
@@ -522,22 +562,114 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════
-  //  QUICK ACTIONS
+  //  QUICK ACTIONS & MONTHLY REPORT
   // ══════════════════════════════════════════════════════════════
 
   Widget _buildQuickActions(ColorScheme colorScheme) {
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: () => context.push('/admin/orders'),
-        icon: const Icon(Icons.list_alt_rounded),
-        label: const Text('Quản lý Đơn hàng'),
-        style: FilledButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => context.push('/admin/orders'),
+            icon: const Icon(Icons.list_alt_rounded),
+            label: const Text('Quản lý Đơn hàng'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
         ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _showSendMonthlyReportDialog,
+            icon: const Icon(Icons.mark_email_read_rounded),
+            label: const Text('Tạo thông báo báo cáo tháng mới'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showSendMonthlyReportDialog() async {
+    final now = DateTime.now();
+    final defaultMonth = 'tháng ${now.month}';
+    final controller = TextEditingController(text: defaultMonth);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.assessment_outlined, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Báo cáo doanh thu tháng', style: TextStyle(fontSize: 18)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Tạo thông báo gửi tới Quản trị viên khi có báo cáo tháng mới:',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Tên tháng báo cáo (ví dụ: tháng 10, tháng 11)',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.calendar_month),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Tạo thông báo'),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      final monthName = controller.text.trim().isEmpty ? defaultMonth : controller.text.trim();
+      final auth = context.read<AuthProvider>();
+      final adminId = auth.currentUser?.id ?? 1;
+      final success = await context.read<AdminProvider>().sendMonthlyReportNotification(
+        monthName,
+        adminId: adminId,
+      );
+
+      if (!mounted) return;
+      if (success) {
+        await context.read<NotificationProvider>().loadNotifications();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Đã tạo thông báo báo cáo doanh thu $monthName thành công!'
+                : 'Lỗi khi tạo thông báo báo cáo',
+          ),
+          backgroundColor: success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 

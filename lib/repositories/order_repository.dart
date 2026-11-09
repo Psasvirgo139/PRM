@@ -3,6 +3,7 @@ import 'dart:math';
 import '../core/database/database_helper.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
+import 'notification_repository.dart';
 
 class OutOfStockException implements Exception {
   final String productName;
@@ -239,11 +240,28 @@ class OrderRepository {
       );
     });
 
-    if (createdOrder == null) {
+    final confirmedOrder = createdOrder;
+    if (confirmedOrder == null) {
       throw Exception('Không thể tạo đơn hàng do lỗi hệ thống.');
     }
 
-    return createdOrder!;
+    // Gửi thông báo tự động cho Customer và Employee
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyCustomerOrderPlaced(
+        userId: userId,
+        orderCode: orderCode,
+        orderId: confirmedOrder.id,
+      );
+      await notifRepo.notifyEmployeesNewOrder(
+        orderCode: orderCode,
+        customerName: customerName.trim(),
+        finalAmount: finalAmount,
+        orderId: confirmedOrder.id,
+      );
+    } catch (_) {}
+
+    return confirmedOrder;
   }
 
   /// Lấy danh sách các đơn hàng của user
@@ -315,6 +333,18 @@ class OrderRepository {
         whereArgs: [orderId],
       );
     });
+
+    // Gửi thông báo hủy đơn tới Customer
+    try {
+      final orderCode = orderRows.first['order_code'] as String;
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyCustomerOrderStatusChange(
+        userId: userId,
+        orderCode: orderCode,
+        status: 'CANCELLED',
+        orderId: orderId,
+      );
+    } catch (_) {}
 
     return true;
   }

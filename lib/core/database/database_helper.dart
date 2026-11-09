@@ -19,7 +19,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -114,6 +114,21 @@ class DatabaseHelper {
       )
     ''');
 
+    // 7. Notifications (Thông báo cho Customer, Employee, Admin)
+    await db.execute('''
+      CREATE TABLE notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'ORDER',
+        related_id INTEGER,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+
     // Seed data
     await _seedInitialData(db);
   }
@@ -121,6 +136,7 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 4) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
+      await db.execute('DROP TABLE IF EXISTS notifications');
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
       await db.execute('DROP TABLE IF EXISTS cart_items');
@@ -128,6 +144,40 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS categories');
       await db.execute('DROP TABLE IF EXISTS users');
       await _createDB(db, newVersion);
+      return;
+    }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'ORDER',
+          related_id INTEGER,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Seed thông báo 1/11 cho admin nếu chưa có
+      final adminNotifs = await db.query(
+        'notifications',
+        where: "user_id = 1 AND type = 'REPORT'",
+      );
+      if (adminNotifs.isEmpty) {
+        await db.insert('notifications', {
+          'user_id': 1,
+          'title': 'Báo cáo doanh thu tháng 10',
+          'message': 'Báo cáo doanh thu tháng 10 của bạn đã có, hãy xem ngay.',
+          'type': 'REPORT',
+          'related_id': null,
+          'is_read': 0,
+          'created_at': '2026-11-01T08:00:00.000',
+        });
+      }
     }
   }
 
@@ -386,6 +436,50 @@ class DatabaseHelper {
       'product_price': 27490000.0,
       'quantity': 1,
       'subtotal': 27490000.0,
+    });
+
+    // 5. Seed Notifications theo phân quyền (Customer, Employee, Admin)
+    // 5.1. Admin: thông báo báo cáo doanh thu tháng 10 vào ngày 1/11 theo yêu cầu
+    await db.insert('notifications', {
+      'user_id': 1, // Admin (id=1)
+      'title': 'Báo cáo doanh thu tháng 10',
+      'message': 'Báo cáo doanh thu tháng 10 của bạn đã có, hãy xem ngay.',
+      'type': 'REPORT',
+      'related_id': null,
+      'is_read': 0,
+      'created_at': '2026-11-01T08:00:00.000',
+    });
+
+    // 5.2. Employee: thông báo có đơn hàng mới cần xử lý
+    await db.insert('notifications', {
+      'user_id': 2, // Employee (id=2)
+      'title': 'Đơn hàng mới cần xử lý',
+      'message': 'Có đơn hàng mới ORD-20261028-001 từ khách hàng Nguyễn Văn A, giá trị 5.520.000 ₫. Vui lòng kiểm tra và xử lý.',
+      'type': 'ORDER',
+      'related_id': 3,
+      'is_read': 0,
+      'created_at': now,
+    });
+
+    // 5.3. Customer: thông báo đơn hàng theo trạng thái
+    await db.insert('notifications', {
+      'user_id': 3, // Customer (id=3)
+      'title': 'Đặt hàng thành công',
+      'message': 'Bạn đã đặt đơn hàng ORD-20261028-001 thành công. Dự kiến giao trong 3 ngày.',
+      'type': 'ORDER',
+      'related_id': 3,
+      'is_read': 0,
+      'created_at': now,
+    });
+
+    await db.insert('notifications', {
+      'user_id': 3, // Customer (id=3)
+      'title': 'Đơn hàng hoàn thành',
+      'message': 'Đơn hàng ORD-20261027-001 của bạn đã được giao thành công! Vui lòng đánh giá sản phẩm.',
+      'type': 'ORDER',
+      'related_id': 1,
+      'is_read': 1,
+      'created_at': yesterday,
     });
   }
 

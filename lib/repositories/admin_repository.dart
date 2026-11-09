@@ -1,6 +1,7 @@
 import '../core/database/database_helper.dart';
 import '../models/order.dart';
 import '../models/product.dart';
+import 'notification_repository.dart';
 
 class AdminRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
@@ -161,14 +162,36 @@ class AdminRepository {
     return Order.fromMap(orderResult.first, items: items);
   }
 
-  /// Cập nhật trạng thái đơn hàng
+  /// Cập nhật trạng thái đơn hàng và gửi thông báo cập nhật tới khách hàng
   Future<void> updateOrderStatus(int orderId, String newStatus) async {
     final db = await _dbHelper.database;
+
+    final orderRows = await db.query(
+      'orders',
+      columns: ['user_id', 'order_code'],
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+
     await db.update(
       'orders',
       {'status': newStatus},
       where: 'id = ?',
       whereArgs: [orderId],
     );
+
+    if (orderRows.isNotEmpty) {
+      try {
+        final userId = orderRows.first['user_id'] as int;
+        final orderCode = orderRows.first['order_code'] as String;
+        final notifRepo = NotificationRepository();
+        await notifRepo.notifyCustomerOrderStatusChange(
+          userId: userId,
+          orderCode: orderCode,
+          status: newStatus,
+          orderId: orderId,
+        );
+      } catch (_) {}
+    }
   }
 }

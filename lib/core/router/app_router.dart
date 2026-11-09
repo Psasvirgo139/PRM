@@ -13,6 +13,7 @@ import '../../screens/admin/admin_order_detail_screen.dart';
 import '../../screens/product/product_detail_screen.dart';
 
 import '../../screens/checkout/order_success_screen.dart';
+import '../../screens/notification/notification_screen.dart';
 import '../../models/order.dart';
 import '../../models/cart_item.dart';
 
@@ -82,6 +83,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/orders',
       builder: (context, state) => const OrderHistoryScreen(),
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationScreen(),
     ),
   ],
 );
