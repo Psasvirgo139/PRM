@@ -13,6 +13,11 @@ import 'providers/product_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/compare_provider.dart';
+import 'providers/voucher_provider.dart';
+import 'providers/quest_provider.dart';
+import 'providers/lucky_wheel_provider.dart';
+import 'providers/review_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +51,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => CompareProvider()),
+        ChangeNotifierProvider(create: (_) => ReviewProvider()),
         // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProxyProvider<AuthProvider, CartProvider>(
@@ -63,6 +70,37 @@ class MyApp extends StatelessWidget {
           update: (_, auth, notif) {
             final provider = notif ?? NotificationProvider();
             provider.setUserId(auth.currentUser?.id);
+            }            }
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, VoucherProvider>(
+          create: (_) => VoucherProvider(),
+          update: (_, auth, vp) {
+            final provider = vp ?? VoucherProvider();
+            if (auth.currentUser?.id != null) {
+              provider.setUserId(auth.currentUser!.id!);
+            }
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, QuestProvider>(
+          create: (_) => QuestProvider(),
+          update: (_, auth, qp) {
+            final provider = qp ?? QuestProvider();
+            if (auth.currentUser?.id != null) {
+              provider.setUserId(auth.currentUser!.id!);
+            }
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, LuckyWheelProvider>(
+          create: (_) => LuckyWheelProvider(),
+          update: (_, auth, lwp) {
+            final provider = lwp ?? LuckyWheelProvider();
+            if (auth.currentUser?.id != null) {
+              provider.setUserId(auth.currentUser!.id!);
+            }
             return provider;
           },
         ),

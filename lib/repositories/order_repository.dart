@@ -376,4 +376,15 @@ class OrderRepository {
 
     return true;
   }
+
+  /// Cập nhật trạng thái đơn hàng (ví dụ: chuyển sang PROCESSING sau khi PayOS thanh toán thành công)
+  Future<void> updateOrderStatus(int orderId, String newStatus) async {
+    final db = await _dbHelper.database;
+    await db.update(
+      'orders',
+      {'status': newStatus},
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
 }

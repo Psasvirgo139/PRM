@@ -24,6 +24,8 @@ class OrderSuccessScreen extends StatelessWidget {
 
   String _getPaymentMethodLabel(String method) {
     switch (method) {
+      case 'PAYOS':
+        return 'Cổng thanh toán payOS (VietQR 24/7)';
       case 'BANKING':
         return 'Chuyển khoản ngân hàng (QR Pay)';
       case 'MOMO':
