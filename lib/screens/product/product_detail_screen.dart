@@ -6,10 +6,15 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
+import '../../models/review.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../providers/review_provider.dart';
+import '../../widgets/add_review_dialog.dart';
 import '../../widgets/product_form_dialog.dart';
+import '../../widgets/review_item_card.dart';
+import '../../widgets/review_summary_widget.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final int productId;
@@ -37,6 +42,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_localProduct == null) {
       _loadProduct();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadReviews();
+    });
+  }
+
+  void _loadReviews() {
+    final auth = context.read<AuthProvider>();
+    context.read<ReviewProvider>().loadReviews(
+      widget.productId,
+      currentUserId: auth.currentUser?.id,
+    );
   }
 
   Future<void> _loadProduct() async {
@@ -239,48 +255,57 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cột trái: Ảnh sản phẩm lớn
-          Expanded(
-            flex: 5,
-            child: _buildProductImageSection(product, categoryName, isOutOfStock, height: 460),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Cột trái: Ảnh sản phẩm lớn
+              Expanded(
+                flex: 5,
+                child: _buildProductImageSection(product, categoryName, isOutOfStock, height: 460),
+              ),
+              const SizedBox(width: 32),
+
+              // Cột phải: Thông tin, Quản trị, Nút mua hàng & Chi tiết
+              Expanded(
+                flex: 6,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildProductHeader(product, categoryName, isOutOfStock),
+                    const SizedBox(height: 16),
+
+                    // Quản trị viên
+                    if (auth.isAdmin) ...[
+                      _buildAdminCard(context, product),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Khung hành động Mua hàng trên Desktop
+                    _buildDesktopActionCard(context, product, isOutOfStock, cart),
+                    const SizedBox(height: 20),
+
+                    // Cam kết
+                    _buildHighlightsSection(),
+                    const SizedBox(height: 20),
+
+                    // Mô tả sản phẩm
+                    _buildDescriptionSection(product),
+                    const SizedBox(height: 20),
+
+                    // Thông số
+                    _buildSpecificationsCard(product, categoryName),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 32),
+          const SizedBox(height: 36),
 
-          // Cột phải: Thông tin, Quản trị, Nút mua hàng & Chi tiết
-          Expanded(
-            flex: 6,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildProductHeader(product, categoryName, isOutOfStock),
-                const SizedBox(height: 16),
-
-                // Quản trị viên
-                if (auth.isAdmin) ...[
-                  _buildAdminCard(context, product),
-                  const SizedBox(height: 16),
-                ],
-
-                // Khung hành động Mua hàng trên Desktop
-                _buildDesktopActionCard(context, product, isOutOfStock, cart),
-                const SizedBox(height: 20),
-
-                // Cam kết
-                _buildHighlightsSection(),
-                const SizedBox(height: 20),
-
-                // Mô tả sản phẩm
-                _buildDescriptionSection(product),
-                const SizedBox(height: 20),
-
-                // Thông số
-                _buildSpecificationsCard(product, categoryName),
-              ],
-            ),
-          ),
+          // Phân hệ Đánh giá & Chấm điểm sản phẩm (Full width)
+          _buildReviewsSection(context, product, auth),
         ],
       ),
     );
@@ -316,6 +341,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 _buildDescriptionSection(product),
                 const SizedBox(height: 20),
                 _buildSpecificationsCard(product, categoryName),
+                const SizedBox(height: 24),
+
+                // Phân hệ Đánh giá & Chấm điểm sản phẩm trên Mobile
+                _buildReviewsSection(context, product, auth),
                 const SizedBox(height: 90),
               ],
             ),
@@ -422,8 +451,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  // Tiêu đề, giá bán
+  // Tiêu đề, giá bán & đánh giá sao
   Widget _buildProductHeader(Product product, String categoryName, bool isOutOfStock) {
+    final reviewProvider = context.watch<ReviewProvider>();
+    final avg = reviewProvider.averageRating;
+    final total = reviewProvider.totalReviews;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -436,7 +469,50 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             height: 1.3,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star_rounded, size: 15, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 3),
+                  Text(
+                    total > 0 ? avg.toStringAsFixed(1) : '5.0',
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFB45309),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '($total đánh giá)',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('•', style: TextStyle(color: AppColors.textMuted)),
+            const SizedBox(width: 8),
+            Text(
+              'Danh mục: $categoryName',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
@@ -618,8 +694,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   onPressed: isOutOfStock
                       ? null
                       : () async {
-                          await _handleAddToCart(context, product, cart);
-                          if (context.mounted) context.push('/cart');
+                          final success = await _handleAddToCart(context, product, cart);
+                          if (success && context.mounted) context.push('/cart');
                         },
                   child: const Text('Mua ngay', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
@@ -832,8 +908,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () async {
-                        await _handleAddToCart(context, product, cart);
-                        if (context.mounted) context.push('/cart');
+                        final success = await _handleAddToCart(context, product, cart);
+                        if (success && context.mounted) context.push('/cart');
                       },
                       child: const Text('Mua ngay', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
@@ -844,12 +920,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     );
   }
 
-  Future<void> _handleAddToCart(BuildContext context, Product product, CartProvider cart) async {
+  Future<bool> _handleAddToCart(BuildContext context, Product product, CartProvider cart) async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      context.push('/login');
+      return false;
+    }
+
     final success = await cart.addToCart(
       productId: product.id!,
       quantity: _quantity,
     );
-    if (!context.mounted) return;
+    if (!context.mounted) return false;
 
     if (success) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -865,6 +953,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           ),
         ),
       );
+      return true;
     } else if (cart.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -873,6 +962,135 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           backgroundColor: AppColors.errorRed,
         ),
       );
+      return false;
     }
+    return false;
+  }
+
+  // Phân hệ hiển thị Đánh giá & Nhận xét của khách hàng
+  Widget _buildReviewsSection(BuildContext context, Product product, AuthProvider auth) {
+    final reviewProvider = context.watch<ReviewProvider>();
+    final reviews = reviewProvider.filteredReviews;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ReviewSummaryWidget(product: product),
+        const SizedBox(height: 16),
+        if (reviewProvider.isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(color: AppColors.primaryOrange),
+            ),
+          )
+        else if (reviews.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              children: [
+                const Icon(Icons.rate_review_outlined, size: 48, color: AppColors.textMuted),
+                const SizedBox(height: 12),
+                const Text(
+                  'Chưa có đánh giá nào phù hợp bộ lọc',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Hãy là người đầu tiên chia sẻ cảm nhận thực tế về sản phẩm này!',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.primaryOrange,
+                    side: const BorderSide(color: AppColors.primaryOrange),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 16),
+                  label: const Text('Viết đánh giá ngay'),
+                  onPressed: () {
+                    if (!auth.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng đăng nhập để viết đánh giá'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
+                    AddReviewDialog.show(context, product: product);
+                  },
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: reviews.length,
+            itemBuilder: (context, index) {
+              final review = reviews[index];
+              return ReviewItemCard(
+                review: review,
+                currentUser: auth.currentUser,
+                onDelete: () => _confirmDeleteReview(context, review, product.id!),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  void _confirmDeleteReview(BuildContext context, Review review, int productId) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Xóa đánh giá', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Bạn có chắc chắn muốn xóa nhận xét đánh giá này không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Hủy bỏ', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              final auth = context.read<AuthProvider>();
+              final success = await context.read<ReviewProvider>().deleteReview(
+                    review.id!,
+                    productId,
+                    currentUserId: auth.currentUser?.id,
+                  );
+              if (context.mounted && success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đã xóa đánh giá thành công'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
   }
 }

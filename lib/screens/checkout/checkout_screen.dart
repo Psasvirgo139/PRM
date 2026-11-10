@@ -8,8 +8,13 @@ import '../../core/utils/responsive.dart';
 import '../../models/cart_item.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/lucky_wheel_provider.dart';
 import '../../providers/order_provider.dart';
 import '../../services/payos_service.dart';
+import '../../providers/quest_provider.dart';
+import '../../providers/voucher_provider.dart';
+import '../../widgets/lucky_wheel_logo.dart';
+import '../voucher/widgets/voucher_card.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List<CartItem>? initialItems;
@@ -126,6 +131,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final subtotal = orderProvider.subtotal;
     final shippingFee = _calculateShippingFee(subtotal);
 
+    final voucherProvider = Provider.of<VoucherProvider>(context, listen: false);
+    final questProvider = Provider.of<QuestProvider>(context, listen: false);
+    final luckyWheelProvider = Provider.of<LuckyWheelProvider>(context, listen: false);
+
+    final discount = voucherProvider.calculateCurrentDiscount(subtotal, shippingFee: shippingFee);
+    final finalAmount = (subtotal - discount + shippingFee).clamp(0.0, double.infinity);
+
     // Xác nhận đặt hàng
     final confirm = await showDialog<bool>(
       context: context,
@@ -145,8 +157,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               'Hệ thống sẽ kiểm tra tồn kho và tạo đơn hàng cho ${orderProvider.checkoutItems.length} sản phẩm.',
             ),
             const SizedBox(height: 10),
+            if (discount > 0) ...[
+              Text(
+                'Giảm giá voucher: -${CurrencyFormatter.format(discount)}',
+                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 4),
+            ],
             Text(
-              'Tổng tiền: ${CurrencyFormatter.format(subtotal + shippingFee)}',
+              'Tổng thanh toán: ${CurrencyFormatter.format(finalAmount)}',
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: AppColors.primaryOrange,
@@ -181,13 +200,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       note: _noteController.text.trim(),
       paymentMethod: _selectedPaymentMethod,
       shippingFee: shippingFee,
-      discount: 0.0,
+      discount: discount,
     );
 
     if (!mounted) return;
 
     if (createdOrder != null) {
-      // Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
+      // 1. Tiêu thụ Voucher đã dùng (nếu có)
+      await voucherProvider.consumeSelectedVoucher();
+
+      // 2. Tự động thưởng nhiệm vụ mua hàng (+1 lượt quay, tối đa 2 lượt/ngày)
+      final rewardedSpin = await questProvider.rewardOrderCompleted();
+      if (rewardedSpin) {
+        await luckyWheelProvider.loadSpins();
+      }
+
+      // 3. Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
       cart.loadCart();
 
       if (_selectedPaymentMethod == 'PAYOS') {
@@ -272,6 +300,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } else {
         // Đặt hàng thành công -> Chuyển sang Màn hình thành công
         router.go('/order-success', extra: createdOrder);
+      // 4. Đặt hàng thành công -> Chuyển sang Màn hình thành công
+      router.go('/order-success', extra: createdOrder);
+
+      // Hiển thị thông báo thưởng lượt quay nếu đạt điều kiện
+      if (rewardedSpin && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🎉 Chúc mừng bạn nhận được +1 Lượt Quay May Mắn từ đơn hàng này!'),
+            backgroundColor: Colors.purple,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 4),
+          ),
+        );
       }
     } else {
       // Báo lỗi (ví dụ: Không đủ tồn kho hoặc lỗi transaction)
@@ -304,10 +345,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final orderProvider = context.watch<OrderProvider>();
+    final voucherProvider = context.watch<VoucherProvider>();
+
     final items = orderProvider.checkoutItems;
     final subtotal = orderProvider.subtotal;
     final shippingFee = _calculateShippingFee(subtotal);
-    final finalAmount = subtotal + shippingFee;
+    final discount = voucherProvider.calculateCurrentDiscount(subtotal, shippingFee: shippingFee);
+    final finalAmount = (subtotal - discount + shippingFee).clamp(0.0, double.infinity);
 
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
@@ -356,8 +400,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         _buildCartItemsReview(items),
                         const SizedBox(height: 16),
 
+                        // Chọn Voucher Giảm Giá (Vòng quay may mắn / Kho Voucher)
+                        _buildVoucherSelectionSection(voucherProvider, subtotal, shippingFee),
+                        const SizedBox(height: 16),
+
                         // Chi tiết bảng tính tiền
-                        _buildPriceSummary(subtotal, shippingFee, finalAmount),
+                        _buildPriceSummary(subtotal, shippingFee, discount, finalAmount),
                         const SizedBox(height: 90), // chừa khoảng trống cho bottom bar
                       ],
                     ),
@@ -924,9 +972,271 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  Widget _buildVoucherSelectionSection(
+    VoucherProvider voucherProvider,
+    double subtotal,
+    double shippingFee,
+  ) {
+    final selectedUserVoucher = voucherProvider.selectedVoucherForCheckout;
+    final voucher = selectedUserVoucher?.voucher;
+    final discount = voucherProvider.calculateCurrentDiscount(subtotal, shippingFee: shippingFee);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: selectedUserVoucher != null ? Colors.deepPurple.shade300 : Colors.grey.shade200,
+          width: selectedUserVoucher != null ? 1.5 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.confirmation_number_outlined,
+                  color: Colors.deepPurple,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Voucher Giảm Giá',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => _openVoucherPickerBottomSheet(voucherProvider, subtotal),
+                icon: const Icon(Icons.style_outlined, size: 16),
+                label: Text(
+                  selectedUserVoucher != null ? 'Đổi mã' : 'Chọn Voucher',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.deepPurple,
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
+          ),
+          if (selectedUserVoucher != null && voucher != null) ...[
+            const Divider(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.deepPurple,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              voucher.code,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              voucher.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tiết kiệm: -${CurrencyFormatter.format(discount)}',
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.cancel_outlined, color: Colors.grey, size: 20),
+                  tooltip: 'Bỏ chọn mã này',
+                  onPressed: () => voucherProvider.selectVoucherForCheckout(null),
+                ),
+              ],
+            ),
+          ] else ...[
+            const SizedBox(height: 6),
+            Text(
+              'Chọn voucher từ kho để được giảm giá hoặc miễn phí vận chuyển.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _openVoucherPickerBottomSheet(VoucherProvider voucherProvider, double subtotal) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        final available = voucherProvider.availableVouchers;
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Kho Voucher Khả Dụng',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      ),
+                      TextButton.icon(
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          context.push('/lucky-wheel');
+                        },
+                        icon: const LuckyWheelLogo(size: 18, strokeColor: AppColors.primaryOrange, fillColor: Colors.white),
+                        label: const Text('Quay thêm', style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  Expanded(
+                    child: available.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.confirmation_number_outlined,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Bạn chưa có voucher nào trong kho!',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  'Chơi Vòng Quay May Mắn để nhận ngay nhiều voucher giảm giá.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton(
+                                  onPressed: () {
+                                    Navigator.of(ctx).pop();
+                                    context.push('/lucky-wheel');
+                                  },
+                                  child: const Text('Đi đến Vòng Quay'),
+                                ),
+                              ],
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            itemCount: available.length,
+                            itemBuilder: (context, index) {
+                              final uv = available[index];
+                              final v = uv.voucher;
+                              final isSelected =
+                                  voucherProvider.selectedVoucherForCheckout?.id == uv.id;
+                              final isEligible = v == null || subtotal >= v.minOrderValue;
+
+                              return Opacity(
+                                opacity: isEligible ? 1.0 : 0.5,
+                                child: Column(
+                                  children: [
+                                    VoucherCard(
+                                      userVoucher: uv,
+                                      isSelectable: isEligible,
+                                      isSelected: isSelected,
+                                      onSelect: () {
+                                        voucherProvider.selectVoucherForCheckout(uv);
+                                        Navigator.of(ctx).pop();
+                                      },
+                                    ),
+                                    if (!isEligible)
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Text(
+                                          'Chưa đủ điều kiện: Cần đơn hàng từ ${CurrencyFormatter.format(v.minOrderValue)}',
+                                          style: TextStyle(
+                                            color: Colors.red.shade700,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildPriceSummary(
     double subtotal,
     double shippingFee,
+    double discount,
     double finalAmount,
   ) {
     return Container(
@@ -981,16 +1291,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Giảm giá',
+              const Text(
+                'Giảm giá Voucher',
                 style: TextStyle(color: Colors.grey, fontSize: 13),
               ),
               Text(
-                '0 ₫',
-                style: TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                discount > 0 ? '- ${CurrencyFormatter.format(discount)}' : '0 ₫',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: discount > 0 ? Colors.green : Colors.black87,
+                ),
               ),
             ],
           ),

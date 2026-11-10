@@ -11,6 +11,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
 import '../../widgets/home_carousel_banner.dart';
+import '../../widgets/lucky_wheel_logo.dart';
 import '../../widgets/product_form_dialog.dart';
 import '../../widgets/product_skeleton.dart';
 
@@ -155,6 +156,29 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push('/orders'),
             ),
 
+          // Vòng quay may mắn (Lucky Wheel) - Logo vòng quay chuẩn thiết kế theo hình mẫu
+          IconButton(
+            tooltip: 'Vòng quay may mắn',
+            onPressed: () {
+              if (!auth.isLoggedIn) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng đăng nhập để tham gia Vòng quay may mắn!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                context.push('/login');
+              } else {
+                context.push('/lucky-wheel');
+              }
+            },
+            icon: const LuckyWheelLogo(
+              size: 26,
+              strokeColor: AppColors.textPrimary,
+              fillColor: Colors.white,
+            ),
+          ),
+
           // Giỏ hàng kèm Badge số lượng
           IconButton(
             icon: Badge.count(
@@ -164,7 +188,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: const Icon(Icons.shopping_bag_outlined),
             ),
             tooltip: 'Giỏ hàng',
-            onPressed: () => context.push('/cart'),
+            onPressed: () {
+              if (!auth.isLoggedIn) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Vui lòng đăng nhập để xem giỏ hàng!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                context.push('/login');
+              } else {
+                context.push('/cart');
+              }
+            },
           ),
 
           // Hồ sơ người dùng
@@ -245,8 +281,141 @@ class _HomeScreenState extends State<HomeScreen> {
               // 3. Carousel Slider Khuyến Mãi (Chuẩn CellphoneS như ảnh mẫu)
               const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.only(bottom: 14),
+                  padding: EdgeInsets.only(bottom: 12),
                   child: HomeCarouselBanner(),
+                ),
+              ),
+
+              // 3.1 Banner Vòng Quay May Mắn (Đồng bộ UI & Màu thương hiệu dự án)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (!auth.isLoggedIn) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Vui lòng đăng nhập để tham gia Vòng quay may mắn!'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        context.push('/login');
+                      } else {
+                        context.push('/lucky-wheel');
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.primaryOrange, Color(0xFFFB923C)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primaryOrange.withValues(alpha: 0.3),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Logo vòng quay chuẩn thiết kế theo hình mẫu
+                          Container(
+                            width: 48,
+                            height: 48,
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.12),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: LuckyWheelLogo(
+                                size: 36,
+                                strokeColor: Color(0xFF1E1E1E),
+                                fillColor: Colors.white,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'VÒNG QUAY MAY MẮN',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 13.5,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Icon(Icons.bolt_rounded, color: Colors.white, size: 16),
+                                  ],
+                                ),
+                                SizedBox(height: 3),
+                                Text(
+                                  'Điểm danh & quay thưởng rinh voucher tới 100k!',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Quay ngay',
+                                  style: TextStyle(
+                                    color: AppColors.primaryOrange,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                SizedBox(width: 3),
+                                Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 13,
+                                  color: AppColors.primaryOrange,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
 
@@ -724,6 +893,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: isOut || product.id == null
                               ? null
                               : () async {
+                                  final auth = context.read<AuthProvider>();
+                                  if (!auth.isLoggedIn) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!'),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                    context.push('/login');
+                                    return;
+                                  }
+
                                   final success = await cart.addToCart(productId: product.id!);
                                   if (!context.mounted) return;
 

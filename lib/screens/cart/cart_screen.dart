@@ -84,6 +84,17 @@ class CartScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Quay lại',
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
         title: Text(
           cart.isEmpty ? 'Giỏ hàng' : 'Giỏ hàng (${cart.totalCount})',
           style: const TextStyle(fontWeight: FontWeight.bold),
@@ -97,9 +108,11 @@ class CartScreen extends StatelessWidget {
             ),
         ],
       ),
-      body: cart.isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
-          : cart.isEmpty
+      body: !auth.isLoggedIn
+          ? _buildNotLoggedInState(context)
+          : cart.isLoading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+              : cart.isEmpty
               ? _buildEmptyCart(context)
               : ResponsiveContainer(
                   maxWidth: 900,
@@ -157,6 +170,56 @@ class CartScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotLoggedInState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: const BoxDecoration(
+                color: AppColors.orangeLight,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                size: 72,
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Bạn chưa đăng nhập!',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Vui lòng đăng nhập để xem các sản phẩm trong giỏ hàng và tiến hành thanh toán nhé.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => context.push('/login'),
+              icon: const Icon(Icons.login_rounded),
+              label: const Text('Đăng nhập ngay'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryOrange,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
