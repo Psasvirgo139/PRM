@@ -575,70 +575,92 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
     final orderProvider = context.watch<OrderProvider>();
     final user = auth.currentUser;
 
-    return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        title: const Text(
-          'Lịch sử đơn hàng',
-          style: TextStyle(fontWeight: FontWeight.bold),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.backgroundLight,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Quay lại',
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/');
+              }
+            },
+          ),
+          title: const Text(
+            'Lịch sử đơn hàng',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          actions: [
+            if (auth.isLoggedIn && auth.isCustomer && user?.id != null)
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Làm mới',
+                onPressed: () {
+                  orderProvider.loadUserOrders(user!.id!);
+                },
+              ),
+          ],
         ),
-        actions: [
-          if (auth.isLoggedIn && auth.isCustomer && user?.id != null)
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Làm mới',
-              onPressed: () {
-                orderProvider.loadUserOrders(user!.id!);
-              },
-            ),
-        ],
-      ),
-      // Phân quyền: CHỈ KHÁCH HÀNG (CUSTOMER) mới được xem lịch sử đơn hàng cá nhân
-      body: ResponsiveContainer(
-        maxWidth: 900,
-        child: !auth.isLoggedIn || user == null
-            ? _buildNotLoggedIn(context)
-            : auth.canManageOrders
-                ? _buildAdminEmployeeRestricted(context, auth)
-                : DefaultTabController(
-                    length: 5,
-                    child: Column(
-                      children: [
-                        // Thanh Tab lọc theo trạng thái
-                        Container(
-                          color: Colors.white,
-                          child: TabBar(
-                            isScrollable: true,
-                            tabAlignment: TabAlignment.start,
-                            labelColor: AppColors.primaryOrange,
-                            unselectedLabelColor: Colors.grey.shade600,
-                            indicatorColor: AppColors.primaryOrange,
-                            indicatorWeight: 3,
-                            tabs: const [
-                              Tab(text: 'Tất cả'),
-                              Tab(text: 'Chờ duyệt'),
-                              Tab(text: 'Đang xử lý'),
-                              Tab(text: 'Hoàn thành'),
-                              Tab(text: 'Đã hủy'),
-                            ],
+        // Phân quyền: CHỈ KHÁCH HÀNG (CUSTOMER) mới được xem lịch sử đơn hàng cá nhân
+        body: ResponsiveContainer(
+          maxWidth: 900,
+          child: !auth.isLoggedIn || user == null
+              ? _buildNotLoggedIn(context)
+              : auth.canManageOrders
+                  ? _buildAdminEmployeeRestricted(context, auth)
+                  : DefaultTabController(
+                      length: 5,
+                      child: Column(
+                        children: [
+                          // Thanh Tab lọc theo trạng thái
+                          Container(
+                            color: Colors.white,
+                            child: TabBar(
+                              isScrollable: true,
+                              tabAlignment: TabAlignment.start,
+                              labelColor: AppColors.primaryOrange,
+                              unselectedLabelColor: Colors.grey.shade600,
+                              indicatorColor: AppColors.primaryOrange,
+                              indicatorWeight: 3,
+                              tabs: const [
+                                Tab(text: 'Tất cả'),
+                                Tab(text: 'Chờ duyệt'),
+                                Tab(text: 'Đang xử lý'),
+                                Tab(text: 'Hoàn thành'),
+                                Tab(text: 'Đã hủy'),
+                              ],
+                            ),
                           ),
-                        ),
 
-                        // Nội dung các tab
-                        Expanded(
-                          child: TabBarView(
-                            children: [
-                              _buildOrderList(context, orderProvider, user.id!, null),
-                              _buildOrderList(context, orderProvider, user.id!, 'PENDING'),
-                              _buildOrderList(context, orderProvider, user.id!, 'PROCESSING'),
-                              _buildOrderList(context, orderProvider, user.id!, 'COMPLETED'),
-                              _buildOrderList(context, orderProvider, user.id!, 'CANCELLED'),
-                            ],
+                          // Nội dung các tab
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                _buildOrderList(context, orderProvider, user.id!, null),
+                                _buildOrderList(context, orderProvider, user.id!, 'PENDING'),
+                                _buildOrderList(context, orderProvider, user.id!, 'PROCESSING'),
+                                _buildOrderList(context, orderProvider, user.id!, 'COMPLETED'),
+                                _buildOrderList(context, orderProvider, user.id!, 'CANCELLED'),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+        ),
       ),
     );
   }
@@ -841,98 +863,102 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             // Phương thức thanh toán & Tổng tiền
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getPaymentMethodTitle(order.paymentMethod),
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Text(
-                          'Tổng tiền: ',
-                          style: TextStyle(fontSize: 13, color: Colors.black87),
-                        ),
-                        Text(
-                          CurrencyFormatter.format(order.finalAmount),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.deepPurple,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+                Expanded(
+                  child: Text(
+                    _getPaymentMethodTitle(order.paymentMethod),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-
-                // Nút hành động
+                const SizedBox(width: 8),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Nút Thanh toán ngay cho đơn PayOS PENDING
-                    if (isPending && order.paymentMethod == 'PAYOS') ...[
-                      FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primaryOrange,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        onPressed: () => _handlePayOSPayment(context, order),
-                        icon: const Icon(Icons.qr_code_2, size: 14),
-                        label: const Text(
-                          'Thanh toán',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
+                    const Text(
+                      'Tổng tiền: ',
+                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                    Text(
+                      CurrencyFormatter.format(order.finalAmount),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
                       ),
-                      const SizedBox(width: 6),
-                    ],
-
-                    // Nút Hủy đơn nếu đang PENDING
-                    if (isPending)
-                      OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.red,
-                          side: const BorderSide(color: Colors.red),
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        onPressed: () => _confirmCancelOrder(context, order, userId),
-                        child: const Text('Hủy đơn', style: TextStyle(fontSize: 12)),
-                      ),
-
-                    // Nút Mua lại nếu COMPLETED
-                    if (isCompleted)
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.deepPurple,
-                          side: const BorderSide(color: Colors.deepPurple),
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                        ),
-                        onPressed: () => _handleReorder(context, order),
-                        icon: const Icon(Icons.replay_rounded, size: 14),
-                        label: const Text('Mua lại', style: TextStyle(fontSize: 12)),
-                      ),
-
-                    const SizedBox(width: 6),
-
-                    // Nút Chi tiết
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.deepPurple,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                      ),
-                      onPressed: () => _showOrderDetailModal(context, order),
-                      child: const Text('Chi tiết', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+
+            // Nút hành động: Sử dụng Wrap để tự động xuống dòng mượt mà khi có nhiều button
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Nút Thanh toán QR cho đơn PayOS PENDING
+                  if (isPending && order.paymentMethod == 'PAYOS')
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryOrange,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      ),
+                      onPressed: () => _handlePayOSPayment(context, order),
+                      icon: const Icon(Icons.qr_code_2, size: 15),
+                      label: const Text(
+                        'Thanh toán QR',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+
+                  // Nút Hủy đơn nếu đang PENDING
+                  if (isPending)
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      ),
+                      onPressed: () => _confirmCancelOrder(context, order, userId),
+                      child: const Text('Hủy đơn', style: TextStyle(fontSize: 12)),
+                    ),
+
+                  // Nút Mua lại nếu COMPLETED
+                  if (isCompleted)
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.deepPurple,
+                        side: const BorderSide(color: Colors.deepPurple),
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      ),
+                      onPressed: () => _handleReorder(context, order),
+                      icon: const Icon(Icons.replay_rounded, size: 14),
+                      label: const Text('Mua lại', style: TextStyle(fontSize: 12)),
+                    ),
+
+                  // Nút Chi tiết
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.deepPurple,
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
+                    onPressed: () => _showOrderDetailModal(context, order),
+                    child: const Text('Chi tiết', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

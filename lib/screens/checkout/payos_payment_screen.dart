@@ -237,20 +237,33 @@ class _PayOSPaymentScreenState extends State<PayOSPaymentScreen> {
     return confirm ?? false;
   }
 
+  Future<void> _handleExitPayment() async {
+    final shouldPop = await _onWillPop();
+    if (shouldPop && mounted) {
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/orders');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          context.go('/orders');
-        }
+        await _handleExitPayment();
       },
       child: Scaffold(
         backgroundColor: AppColors.backgroundLight,
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Quay lại',
+            onPressed: _handleExitPayment,
+          ),
           title: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -670,12 +683,7 @@ class _PayOSPaymentScreenState extends State<PayOSPaymentScreen> {
     return Column(
       children: [
         TextButton(
-          onPressed: () async {
-            final shouldPop = await _onWillPop();
-            if (shouldPop && mounted) {
-              context.go('/orders');
-            }
-          },
+          onPressed: _handleExitPayment,
           child: Text(
             'Thanh toán sau (Lưu đơn vào lịch sử)',
             style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
