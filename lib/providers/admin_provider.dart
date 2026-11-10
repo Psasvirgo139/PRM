@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/order.dart';
 import '../models/product.dart';
 import '../repositories/admin_repository.dart';
+import '../repositories/notification_repository.dart';
 
 class AdminProvider extends ChangeNotifier {
   final AdminRepository _repository = AdminRepository();
@@ -237,5 +238,80 @@ class AdminProvider extends ChangeNotifier {
   /// Đặt filter status và load lại danh sách
   void setStatusFilter(String? status) {
     loadOrders(status: status);
+  }
+
+  /// Tạo và gửi thông báo báo cáo tháng mới cho Quản trị viên
+  Future<bool> sendMonthlyReportNotification(String monthName, {int adminId = 1}) async {
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyAdminMonthlyReport(
+        adminId: adminId,
+        monthName: monthName,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error sending monthly report notification: $e');
+      return false;
+    }
+  }
+
+  /// Tạo và gửi thông báo mốc doanh thu cho Quản trị viên
+  Future<bool> sendRevenueMilestoneNotification(
+    double milestoneAmount, {
+    String periodName = 'hôm nay',
+    int? adminId,
+  }) async {
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyAdminRevenueMilestone(
+        adminId: adminId,
+        milestoneAmount: milestoneAmount,
+        periodName: periodName,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error sending revenue milestone notification: $e');
+      return false;
+    }
+  }
+
+  /// Phát thông báo chương trình khuyến mãi tới khách hàng
+  Future<bool> broadcastPromotionNotification(
+    String title,
+    String message, {
+    int? customerId,
+  }) async {
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyCustomersPromotion(
+        title: title,
+        message: message,
+        customerId: customerId,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error broadcasting promotion notification: $e');
+      return false;
+    }
+  }
+
+  /// Gửi cảnh báo hàng tồn kho cho Staff (Admin & Employee)
+  Future<bool> sendStockAlertNotification(
+    String productName,
+    int stockQuantity, {
+    int? productId,
+  }) async {
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyStockAlert(
+        productName: productName,
+        stockQuantity: stockQuantity,
+        productId: productId,
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Error sending stock alert notification: $e');
+      return false;
+    }
   }
 }

@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 7,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onOpen: _onOpen,
@@ -153,7 +153,22 @@ class DatabaseHelper {
       )
     ''');
 
-    // 7. Vouchers (Hệ thống Voucher)
+    // 7. Notifications (Thông báo cho Customer, Employee, Admin)
+    await db.execute('''
+      CREATE TABLE notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        type TEXT NOT NULL DEFAULT 'ORDER',
+        related_id INTEGER,
+        is_read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+    
+    // 8. Vouchers (Hệ thống Voucher)
     await db.execute('''
       CREATE TABLE vouchers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,7 +184,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 8. User Vouchers (Kho voucher cá nhân)
+    // 9. User Vouchers (Kho voucher cá nhân)
     await db.execute('''
       CREATE TABLE user_vouchers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -183,7 +198,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 9. User Spins (Tổng lượt quay khả dụng)
+    // 10. User Spins (Tổng lượt quay khả dụng)
     await db.execute('''
       CREATE TABLE user_spins (
         user_id INTEGER PRIMARY KEY,
@@ -194,7 +209,7 @@ class DatabaseHelper {
       )
     ''');
 
-    // 10. User Daily Quests (Tiến độ nhiệm vụ mỗi ngày)
+    // 11. User Daily Quests (Tiến độ nhiệm vụ mỗi ngày)
     await db.execute('''
       CREATE TABLE user_daily_quests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,7 +220,10 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(user_id, quest_date)
-    // 7. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
+      )
+    ''');
+    
+    // 12. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
     await db.execute('''
       CREATE TABLE reviews (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -230,6 +248,7 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 5) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
+      await db.execute('DROP TABLE IF EXISTS notifications');
       await db.execute('DROP TABLE IF EXISTS user_daily_quests');
       await db.execute('DROP TABLE IF EXISTS user_spins');
       await db.execute('DROP TABLE IF EXISTS user_vouchers');
@@ -247,6 +266,38 @@ class DatabaseHelper {
 
     if (oldVersion < 5) {
       await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'ORDER',
+          related_id INTEGER,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+
+    if (oldVersion < 7) {
+      // Đảm bảo bảng notifications tồn tại
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS notifications (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          type TEXT NOT NULL DEFAULT 'ORDER',
+          related_id INTEGER,
+          is_read INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // Nạp toàn diện bộ thông báo mẫu theo yêu cầu cho Admin, Employee, Customer
+      await _seedNotifications(db);
         CREATE TABLE IF NOT EXISTS reviews (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           product_id INTEGER NOT NULL,
@@ -550,6 +601,247 @@ class DatabaseHelper {
       'subtotal': 27490000.0,
     });
 
+    // 5. Seed Notifications theo phân quyền (Customer, Employee, Admin)
+    await _seedNotifications(db);
+  }
+
+  Future<void> _seedNotifications(Database db) async {
+    final stockNotifs = await db.query(
+      'notifications',
+      where: "type = 'STOCK'",
+    );
+
+    // Nếu database đã có thông báo loại STOCK nghĩa là đã nạp bộ seed đầy đủ mới
+    if (stockNotifs.isNotEmpty) return;
+
+    // Xóa sạch để seed bộ dữ liệu thông báo chuẩn hóa đồng bộ với các order và product mẫu
+    await db.delete('notifications');
+
+    final now = DateTime.now().toIso8601String();
+    final yesterday = DateTime.now().subtract(const Duration(days: 1)).toIso8601String();
+    final twoDaysAgo = DateTime.now().subtract(const Duration(days: 2)).toIso8601String();
+    final threeDaysAgo = DateTime.now().subtract(const Duration(days: 3)).toIso8601String();
+
+    final notifications = [
+      // ══════════════════════════════════════════════════════════════
+      //  1. ADMIN (user_id = 1)
+      // ══════════════════════════════════════════════════════════════
+      // Báo cáo doanh thu tháng 10 (ngày 1/11)
+      {
+        'user_id': 1,
+        'title': 'Báo cáo doanh thu tháng 10',
+        'message': 'Báo cáo doanh thu tháng 10 của bạn đã có, hãy xem ngay.',
+        'type': 'REPORT',
+        'related_id': null,
+        'is_read': 0,
+        'created_at': '2026-11-01T08:00:00.000',
+      },
+      // Báo cáo doanh thu theo mốc hôm nay
+      {
+        'user_id': 1,
+        'title': 'Mốc doanh thu mới',
+        'message': 'Doanh thu hôm nay đã đạt mốc 5.000.000 VND',
+        'type': 'REPORT',
+        'related_id': null,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Báo cáo doanh thu theo mốc hệ thống
+      {
+        'user_id': 1,
+        'title': 'Mốc doanh thu hệ thống',
+        'message': 'Doanh thu hệ thống đã đạt mốc 90.000.000 VND',
+        'type': 'REPORT',
+        'related_id': null,
+        'is_read': 1,
+        'created_at': yesterday,
+      },
+      // Cảnh báo hết hàng
+      {
+        'user_id': 1,
+        'title': 'Cảnh báo hết hàng',
+        'message': 'Chuột công thái học Logitech MX Master 3S đã hết hàng',
+        'type': 'STOCK',
+        'related_id': 6,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Cảnh báo tồn kho thấp
+      {
+        'user_id': 1,
+        'title': 'Cảnh báo sắp hết hàng',
+        'message': 'Bàn phím cơ không dây Keychron K2 chỉ còn 3 sản phẩm trong kho',
+        'type': 'STOCK',
+        'related_id': 5,
+        'is_read': 0,
+        'created_at': now,
+      },
+      {
+        'user_id': 1,
+        'title': 'Cảnh báo sắp hết hàng',
+        'message': 'MacBook Air M3 13 inch chỉ còn 5 sản phẩm trong kho',
+        'type': 'STOCK',
+        'related_id': 3,
+        'is_read': 1,
+        'created_at': yesterday,
+      },
+      // Thay đổi dữ liệu sản phẩm bởi nhân viên
+      {
+        'user_id': 1,
+        'title': 'Cập nhật sản phẩm',
+        'message': 'Sản phẩm iPhone 15 Pro Max 256GB vừa được thay đổi dữ liệu bởi nhân viên Trần Văn Nhân Viên.',
+        'type': 'PRODUCT',
+        'related_id': 1,
+        'is_read': 0,
+        'created_at': yesterday,
+      },
+      {
+        'user_id': 1,
+        'title': 'Thêm sản phẩm mới',
+        'message': 'Sản phẩm Chuột công thái học Logitech MX Master 3S vừa được thêm bởi nhân viên Trần Văn Nhân Viên.',
+        'type': 'PRODUCT',
+        'related_id': 6,
+        'is_read': 1,
+        'created_at': twoDaysAgo,
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      //  2. EMPLOYEE (user_id = 2)
+      // ══════════════════════════════════════════════════════════════
+      // Đơn hàng mới cần xử lý (Đơn 3 PENDING)
+      {
+        'user_id': 2,
+        'title': 'Đơn hàng mới cần xử lý',
+        'message': 'Có đơn hàng mới ORD-20261028-001 từ khách hàng Nguyễn Văn A, giá trị 5.520.000 ₫. Vui lòng kiểm tra và xử lý.',
+        'type': 'ORDER',
+        'related_id': 3,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Đơn hàng đang xử lý (Đơn 4 PROCESSING)
+      {
+        'user_id': 2,
+        'title': 'Đơn hàng đang xử lý',
+        'message': 'Đơn hàng ORD-20261028-002 từ khách hàng Trần Thị B đã được duyệt, đang được xử lý.',
+        'type': 'ORDER',
+        'related_id': 4,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Đơn hàng bị hủy (Đơn 5 CANCELLED)
+      {
+        'user_id': 2,
+        'title': 'Đơn hàng bị hủy',
+        'message': 'Đơn hàng ORD-20261025-001 từ khách hàng Nguyễn Văn A đã bị hủy. Vui lòng kiểm tra và xử lý hoàn hàng.',
+        'type': 'ORDER',
+        'related_id': 5,
+        'is_read': 1,
+        'created_at': threeDaysAgo,
+      },
+      // Cảnh báo hàng tồn kho cho Employee
+      {
+        'user_id': 2,
+        'title': 'Cảnh báo hết hàng',
+        'message': 'Chuột công thái học Logitech MX Master 3S đã hết hàng',
+        'type': 'STOCK',
+        'related_id': 6,
+        'is_read': 0,
+        'created_at': now,
+      },
+      {
+        'user_id': 2,
+        'title': 'Cảnh báo sắp hết hàng',
+        'message': 'Bàn phím cơ không dây Keychron K2 chỉ còn 3 sản phẩm trong kho',
+        'type': 'STOCK',
+        'related_id': 5,
+        'is_read': 0,
+        'created_at': now,
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      //  3. CUSTOMER 1 (user_id = 3 - Nguyễn Văn A)
+      // ══════════════════════════════════════════════════════════════
+      // Đặt hàng thành công (Đơn 3 PENDING)
+      {
+        'user_id': 3,
+        'title': 'Đặt hàng thành công',
+        'message': 'Bạn đã đặt đơn hàng ORD-20261028-001, dự kiến giao trong 3 ngày.',
+        'type': 'ORDER',
+        'related_id': 3,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Trạng thái đơn thay đổi sang hoàn thành (Đơn 1 COMPLETED)
+      {
+        'user_id': 3,
+        'title': 'Đơn hàng giao thành công',
+        'message': 'Đơn hàng ORD-20261027-001 đã được giao thành công, vui lòng đánh giá sản phẩm.',
+        'type': 'ORDER',
+        'related_id': 1,
+        'is_read': 1,
+        'created_at': yesterday,
+      },
+      // Đơn hàng bị hủy (Đơn 5 CANCELLED)
+      {
+        'user_id': 3,
+        'title': 'Đơn hàng đã hủy',
+        'message': 'Đơn hàng ORD-20261025-001 của bạn đã bị hủy.',
+        'type': 'ORDER',
+        'related_id': 5,
+        'is_read': 1,
+        'created_at': threeDaysAgo,
+      },
+      // Chương trình khuyến mãi
+      {
+        'user_id': 3,
+        'title': 'Siêu Sale Tháng 11',
+        'message': 'Giảm giá tới 20% toàn bộ phụ kiện công nghệ và miễn phí giao hàng cho đơn từ 500.000đ!',
+        'type': 'PROMOTION',
+        'related_id': null,
+        'is_read': 0,
+        'created_at': now,
+      },
+      {
+        'user_id': 3,
+        'title': 'Mã giảm giá cho bạn',
+        'message': 'Tặng bạn voucher giảm 200.000 ₫ cho đơn hàng tiếp theo từ 2.000.000 ₫.',
+        'type': 'PROMOTION',
+        'related_id': null,
+        'is_read': 1,
+        'created_at': twoDaysAgo,
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      //  4. CUSTOMER 2 (user_id = 4 - Trần Thị B)
+      // ══════════════════════════════════════════════════════════════
+      // Trạng thái đơn thay đổi (Đơn 4 PROCESSING)
+      {
+        'user_id': 4,
+        'title': 'Đơn hàng đang xử lý',
+        'message': 'Đơn hàng ORD-20261028-002 của bạn đã được duyệt, đang được xử lý.',
+        'type': 'ORDER',
+        'related_id': 4,
+        'is_read': 0,
+        'created_at': now,
+      },
+      // Đơn 2 COMPLETED
+      {
+        'user_id': 4,
+        'title': 'Đơn hàng giao thành công',
+        'message': 'Đơn hàng ORD-20261026-001 đã được giao thành công, vui lòng đánh giá sản phẩm.',
+        'type': 'ORDER',
+        'related_id': 2,
+        'is_read': 1,
+        'created_at': twoDaysAgo,
+      },
+      // Chương trình khuyến mãi
+      {
+        'user_id': 4,
+        'title': 'Ưu đãi thành viên mới',
+        'message': 'Chào mừng bạn đến với shop! Miễn phí vận chuyển cho tất cả đơn hàng đầu tiên.',
+        'type': 'PROMOTION',
+        'related_id': null,
+        'is_read': 0,
     // 7. Seed Vouchers hệ thống
     final initialVouchers = [
       {
@@ -758,6 +1050,8 @@ class DatabaseHelper {
       },
     ];
 
+    for (final notif in notifications) {
+      await db.insert('notifications', notif);
     for (final r in reviews) {
       await db.insert('reviews', r);
     }

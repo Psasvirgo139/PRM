@@ -8,6 +8,7 @@ import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/compare_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
@@ -105,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final cart = context.watch<CartProvider>();
+    final notifProvider = context.watch<NotificationProvider>();
     final productProvider = context.watch<ProductProvider>();
 
     final categories = productProvider.categories;
@@ -158,6 +160,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push('/orders'),
             ),
 
+          // Thông báo kèm Badge số lượng chưa đọc
+          IconButton(
+            icon: Badge.count(
+              count: notifProvider.unreadCount,
+              isLabelVisible: notifProvider.unreadCount > 0,
+              backgroundColor: AppColors.primaryOrange,
+              child: const Icon(Icons.notifications_outlined),
+            ),
+            tooltip: 'Thông báo',
+            onPressed: () => context.push('/notifications'),
           // So sánh đối đầu thông số kỹ thuật (Smart Specs)
           Consumer<CompareProvider>(
             builder: (_, compare, _) => IconButton(

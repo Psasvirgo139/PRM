@@ -601,7 +601,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             : auth.canManageOrders
                 ? _buildAdminEmployeeRestricted(context, auth)
                 : DefaultTabController(
-                    length: 6,
+                    length: 5,
                     child: Column(
                       children: [
                         // Thanh Tab lọc theo trạng thái
@@ -615,32 +615,30 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                             indicatorColor: AppColors.primaryOrange,
                             indicatorWeight: 3,
                             tabs: const [
-                            Tab(text: 'Tất cả'),
-                            Tab(text: 'Chờ duyệt'),
-                            Tab(text: 'Đang xử lý'),
-                            Tab(text: 'Đang giao'),
-                            Tab(text: 'Hoàn thành'),
-                            Tab(text: 'Đã hủy'),
-                          ],
+                              Tab(text: 'Tất cả'),
+                              Tab(text: 'Chờ duyệt'),
+                              Tab(text: 'Đang xử lý'),
+                              Tab(text: 'Hoàn thành'),
+                              Tab(text: 'Đã hủy'),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      // Nội dung các tab
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _buildOrderList(context, orderProvider, user.id!, null),
-                            _buildOrderList(context, orderProvider, user.id!, 'PENDING'),
-                            _buildOrderList(context, orderProvider, user.id!, 'PROCESSING'),
-                            _buildOrderList(context, orderProvider, user.id!, 'SHIPPED'),
-                            _buildOrderList(context, orderProvider, user.id!, 'COMPLETED'),
-                            _buildOrderList(context, orderProvider, user.id!, 'CANCELLED'),
-                          ],
+                        // Nội dung các tab
+                        Expanded(
+                          child: TabBarView(
+                            children: [
+                              _buildOrderList(context, orderProvider, user.id!, null),
+                              _buildOrderList(context, orderProvider, user.id!, 'PENDING'),
+                              _buildOrderList(context, orderProvider, user.id!, 'PROCESSING'),
+                              _buildOrderList(context, orderProvider, user.id!, 'COMPLETED'),
+                              _buildOrderList(context, orderProvider, user.id!, 'CANCELLED'),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
       ),
     );
   }

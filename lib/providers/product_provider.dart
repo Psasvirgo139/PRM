@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../models/product.dart';
+import '../repositories/notification_repository.dart';
 import '../repositories/product_repository.dart';
 
 class ProductProvider extends ChangeNotifier {
@@ -108,15 +109,23 @@ class ProductProvider extends ChangeNotifier {
     loadProducts();
   }
 
-  // Thêm sản phẩm mới (Admin)
-  Future<bool> addProduct(Product product) async {
+  // Thêm sản phẩm mới (Admin / Staff)
+  Future<bool> addProduct(Product product, {String actorName = 'nhân viên'}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _productRepository.addProduct(product);
+      final newId = await _productRepository.addProduct(product);
       await loadProducts();
+      try {
+        await NotificationRepository().notifyAdminsProductChange(
+          productName: product.name,
+          action: 'ADD',
+          actorName: actorName,
+          productId: newId,
+        );
+      } catch (_) {}
       return true;
     } catch (e) {
       _errorMessage = 'Thêm sản phẩm thất bại: $e';
@@ -126,8 +135,8 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // Cập nhật sản phẩm (Admin)
-  Future<bool> updateProduct(Product product) async {
+  // Cập nhật sản phẩm (Admin / Staff)
+  Future<bool> updateProduct(Product product, {String actorName = 'nhân viên'}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
@@ -135,6 +144,14 @@ class ProductProvider extends ChangeNotifier {
     try {
       await _productRepository.updateProduct(product);
       await loadProducts();
+      try {
+        await NotificationRepository().notifyAdminsProductChange(
+          productName: product.name,
+          action: 'UPDATE',
+          actorName: actorName,
+          productId: product.id,
+        );
+      } catch (_) {}
       return true;
     } catch (e) {
       _errorMessage = 'Cập nhật sản phẩm thất bại: $e';
@@ -144,15 +161,26 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // Xóa sản phẩm (Admin)
-  Future<bool> deleteProduct(int productId) async {
+  // Xóa sản phẩm (Admin / Staff)
+  Future<bool> deleteProduct(int productId, {String actorName = 'nhân viên'}) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
+      final productToDelete = _products.where((p) => p.id == productId).firstOrNull;
+      final productName = productToDelete?.name ?? 'ID #$productId';
+
       await _productRepository.deleteProduct(productId);
       await loadProducts();
+      try {
+        await NotificationRepository().notifyAdminsProductChange(
+          productName: productName,
+          action: 'DELETE',
+          actorName: actorName,
+          productId: productId,
+        );
+      } catch (_) {}
       return true;
     } catch (e) {
       _errorMessage = 'Xóa sản phẩm thất bại: $e';
