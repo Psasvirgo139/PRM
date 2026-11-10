@@ -59,6 +59,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
       } else if (auth.isEmployee) {
         context.push('/admin/orders');
       }
+    } else if (item.type == 'VOUCHER') {
+      context.push('/vouchers');
+    } else if (item.type == 'REVIEW') {
+      if (item.relatedId != null) {
+        context.push('/product/${item.relatedId}');
+      }
     } else if (item.type == 'PROMOTION') {
       context.go('/');
     } else if (item.type == 'ORDER') {
@@ -448,6 +454,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (item.type == 'PROMOTION') {
       return Icons.local_offer_rounded;
     }
+    if (item.type == 'VOUCHER') {
+      return Icons.card_giftcard_rounded;
+    }
+    if (item.type == 'REVIEW') {
+      return Icons.star_rounded;
+    }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();
     if (title.contains('thành công') || msg.contains('thành công') || msg.contains('đánh giá')) {
@@ -478,6 +490,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (item.type == 'PROMOTION') {
       return Colors.pink.shade50;
     }
+    if (item.type == 'VOUCHER') {
+      return Colors.orange.shade50;
+    }
+    if (item.type == 'REVIEW') {
+      return Colors.amber.shade50;
+    }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();
     if (title.contains('thành công') || msg.contains('thành công')) {
@@ -504,6 +522,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
     if (item.type == 'PROMOTION') {
       return Colors.pink.shade700;
+    }
+    if (item.type == 'VOUCHER') {
+      return Colors.deepOrange;
+    }
+    if (item.type == 'REVIEW') {
+      return Colors.amber.shade800;
     }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();

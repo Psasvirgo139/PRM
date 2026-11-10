@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/voucher.dart';
 import '../models/wheel_slice.dart';
+import '../repositories/notification_repository.dart';
 import '../repositories/quest_repository.dart';
 import '../repositories/voucher_repository.dart';
 
@@ -115,6 +116,18 @@ class LuckyWheelProvider extends ChangeNotifier {
             voucherId: voucher.id!,
           );
           _lastWonVoucher = voucher;
+
+          // Tạo thông báo trúng voucher cho user
+          try {
+            await NotificationRepository().notifyCustomerWonVoucher(
+              userId: _userId,
+              voucherTitle: voucher.title,
+              voucherCode: voucher.code,
+              voucherId: voucher.id,
+            );
+          } catch (e) {
+            debugPrint('Lỗi tạo thông báo voucher: $e');
+          }
         }
       } else if (targetSlice.isExtraSpin) {
         // Cộng lại 1 lượt quay thưởng

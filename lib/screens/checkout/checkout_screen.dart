@@ -218,6 +218,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // 3. Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
       cart.loadCart();
 
+      if (!mounted) return;
+
       if (_selectedPaymentMethod == 'PAYOS') {
         // Hiển thị dialog đang khởi tạo thanh toán payOS
         showDialog(
@@ -300,19 +302,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       } else {
         // Đặt hàng thành công -> Chuyển sang Màn hình thành công
         router.go('/order-success', extra: createdOrder);
-      // 4. Đặt hàng thành công -> Chuyển sang Màn hình thành công
-      router.go('/order-success', extra: createdOrder);
 
-      // Hiển thị thông báo thưởng lượt quay nếu đạt điều kiện
-      if (rewardedSpin && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Chúc mừng bạn nhận được +1 Lượt Quay May Mắn từ đơn hàng này!'),
-            backgroundColor: Colors.purple,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 4),
-          ),
-        );
+        // Hiển thị thông báo thưởng lượt quay nếu đạt điều kiện
+        if (rewardedSpin && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 Chúc mừng bạn nhận được +1 Lượt Quay May Mắn từ đơn hàng này!'),
+              backgroundColor: Colors.purple,
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
       }
     } else {
       // Báo lỗi (ví dụ: Không đủ tồn kho hoặc lỗi transaction)

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/review.dart';
 import '../models/user.dart';
+import '../repositories/notification_repository.dart';
 import '../repositories/review_repository.dart';
 
 class ReviewProvider extends ChangeNotifier {
@@ -125,6 +126,20 @@ class ReviewProvider extends ChangeNotifier {
       if (reviewId > 0) {
         // Nạp lại danh sách đánh giá
         await loadReviews(productId, currentUserId: user.id);
+
+        // Tạo thông báo xác nhận cho User và thông báo cho Quản trị viên
+        try {
+          await NotificationRepository().notifyReviewSubmitted(
+            customerId: user.id!,
+            customerName: user.fullName,
+            productId: productId,
+            rating: rating,
+            comment: comment.trim(),
+          );
+        } catch (e) {
+          debugPrint('Lỗi tạo thông báo review: $e');
+        }
+
         return true;
       }
       return false;

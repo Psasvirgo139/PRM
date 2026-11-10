@@ -70,7 +70,6 @@ class MyApp extends StatelessWidget {
           update: (_, auth, notif) {
             final provider = notif ?? NotificationProvider();
             provider.setUserId(auth.currentUser?.id);
-            }            }
             return provider;
           },
         ),
