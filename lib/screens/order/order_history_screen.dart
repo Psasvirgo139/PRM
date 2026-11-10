@@ -10,6 +10,7 @@ import '../../models/order.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../services/payos_service.dart';
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -65,6 +66,8 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
 
   String _getPaymentMethodTitle(String method) {
     switch (method.toUpperCase()) {
+      case 'PAYOS':
+        return 'Cổng payOS (VietQR 24/7)';
       case 'BANKING':
       case 'BANK_TRANSFER':
         return 'Chuyển khoản (VietQR)';
@@ -197,6 +200,69 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             textColor: Colors.amberAccent,
             onPressed: () => context.push('/cart'),
           ),
+        ),
+      );
+    }
+  }
+
+  // Khởi tạo và mở giao diện thanh toán payOS cho đơn hàng PENDING
+  Future<void> _handlePayOSPayment(BuildContext context, Order order) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: AppColors.primaryOrange),
+                SizedBox(height: 16),
+                Text(
+                  'Đang khởi tạo cổng thanh toán payOS...',
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      final payosService = PayOSService();
+      final payosOrderCode = PayOSService.generateUniqueOrderCode();
+      final payosData = await payosService.createPaymentLink(
+        orderCode: payosOrderCode,
+        amount: order.finalAmount.round(),
+        description: 'DH${order.id ?? payosOrderCode}',
+        items: order.items.map((i) => {
+          'name': i.productName,
+          'quantity': i.quantity,
+          'price': i.productPrice.round(),
+        }).toList(),
+      );
+
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // đóng loading
+
+      context.push(
+        '/payos-payment',
+        extra: {
+          'order': order,
+          'payosData': payosData,
+        },
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.of(context, rootNavigator: true).pop(); // đóng loading
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể tạo mã payOS: ${e.toString().replaceAll('Exception: ', '')}'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -456,7 +522,34 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
+
+                  // Nút thanh toán payOS trực tiếp trong modal chi tiết
+                  if (order.status.toUpperCase() == 'PENDING' && order.paymentMethod == 'PAYOS') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryOrange,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          _handlePayOSPayment(context, order);
+                        },
+                        icon: const Icon(Icons.qr_code_2),
+                        label: const Text(
+                          'Thanh toán ngay qua payOS',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  const SizedBox(height: 12),
                 ],
               ),
             );
@@ -782,6 +875,24 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Nút Thanh toán ngay cho đơn PayOS PENDING
+                    if (isPending && order.paymentMethod == 'PAYOS') ...[
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryOrange,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                        ),
+                        onPressed: () => _handlePayOSPayment(context, order),
+                        icon: const Icon(Icons.qr_code_2, size: 14),
+                        label: const Text(
+                          'Thanh toán',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+
                     // Nút Hủy đơn nếu đang PENDING
                     if (isPending)
                       OutlinedButton(

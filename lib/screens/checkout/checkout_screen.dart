@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/lucky_wheel_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../services/payos_service.dart';
 import '../../providers/quest_provider.dart';
 import '../../providers/voucher_provider.dart';
 import '../../widgets/lucky_wheel_logo.dart';
@@ -32,7 +33,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
 
-  String _selectedPaymentMethod = 'COD'; // 'COD', 'BANKING', 'MOMO'
+  String _selectedPaymentMethod = 'PAYOS'; // 'PAYOS', 'COD', 'BANKING', 'MOMO'
   bool _isInit = false;
 
   @override
@@ -217,6 +218,88 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // 3. Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
       cart.loadCart();
 
+      if (_selectedPaymentMethod == 'PAYOS') {
+        // Hiển thị dialog đang khởi tạo thanh toán payOS
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => const Center(
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(color: AppColors.primaryOrange),
+                    SizedBox(height: 16),
+                    Text(
+                      'Đang khởi tạo cổng thanh toán payOS...',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+
+        try {
+          final payosService = PayOSService();
+          final payosOrderCode = PayOSService.generateUniqueOrderCode();
+          final payosData = await payosService.createPaymentLink(
+            orderCode: payosOrderCode,
+            amount: createdOrder.finalAmount.round(),
+            description: 'DH${createdOrder.id ?? payosOrderCode}',
+            items: createdOrder.items.map((i) => {
+              'name': i.productName,
+              'quantity': i.quantity,
+              'price': i.productPrice.round(),
+            }).toList(),
+          );
+
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).pop(); // đóng loading dialog
+
+          // Chuyển sang màn hình thanh toán PayOS
+          router.push(
+            '/payos-payment',
+            extra: {
+              'order': createdOrder,
+              'payosData': payosData,
+            },
+          );
+        } catch (e) {
+          if (!mounted) return;
+          Navigator.of(context, rootNavigator: true).pop(); // đóng loading dialog
+
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Thông báo thanh toán'),
+                ],
+              ),
+              content: Text(
+                'Đơn hàng "${createdOrder.orderCode}" đã được tạo thành công.\nTuy nhiên việc khởi tạo cổng payOS gặp sự cố: ${e.toString().replaceAll('Exception: ', '')}\n\nBạn có thể vào mục "Lịch sử đơn hàng" để tiếp tục thanh toán sau.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(ctx).pop();
+                    router.go('/order-success', extra: createdOrder);
+                  },
+                  child: const Text('Xem đơn hàng'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        // Đặt hàng thành công -> Chuyển sang Màn hình thành công
+        router.go('/order-success', extra: createdOrder);
       // 4. Đặt hàng thành công -> Chuyển sang Màn hình thành công
       router.go('/order-success', extra: createdOrder);
 
@@ -610,16 +693,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           ),
           const Divider(height: 20),
           _buildPaymentOption(
+            value: 'PAYOS',
+            title: 'Cổng thanh toán payOS (VietQR 24/7)',
+            subtitle: 'Quét mã VietQR tự động xác nhận sau 3 giây (Khuyên dùng)',
+            icon: Icons.qr_code_2_rounded,
+            badge: 'Tự động duyệt',
+          ),
+          const SizedBox(height: 8),
+          _buildPaymentOption(
             value: 'COD',
             title: 'Thanh toán tiền mặt khi nhận hàng (COD)',
             subtitle: 'Thanh toán cho nhân viên giao hàng khi nhận sản phẩm',
-            icon: Icons.money,
+            icon: Icons.payments_outlined,
           ),
           const SizedBox(height: 8),
           _buildPaymentOption(
             value: 'BANKING',
-            title: 'Chuyển khoản ngân hàng (QR Pay)',
-            subtitle: 'Quét mã VietQR chuyển khoản nhanh 24/7',
+            title: 'Chuyển khoản ngân hàng thủ công',
+            subtitle: 'Chuyển khoản qua số tài khoản cá nhân',
             icon: Icons.account_balance,
           ),
           const SizedBox(height: 8),
@@ -639,6 +730,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
+    String? badge,
   }) {
     final isSelected = _selectedPaymentMethod == value;
     return InkWell(
@@ -672,13 +764,38 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      fontSize: 13,
-                      color: isSelected ? AppColors.primaryOrange : Colors.black87,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            fontSize: 13,
+                            color: isSelected ? AppColors.primaryOrange : Colors.black87,
+                          ),
+                        ),
+                      ),
+                      if (badge != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.green.shade300, width: 0.8),
+                          ),
+                          child: Text(
+                            badge,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.green.shade800,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 2),
                   Text(
