@@ -184,4 +184,183 @@ class NotificationRepository {
       ),
     );
   }
+
+  /// Thông báo cho Quản trị viên (Admin) về mốc doanh thu đạt được (ví dụ: đạt mốc 5.000.000 VND)
+  Future<void> notifyAdminRevenueMilestone({
+    int? adminId,
+    required double milestoneAmount,
+    String periodName = 'hôm nay',
+  }) async {
+    final db = await _dbHelper.database;
+    final formattedAmount = CurrencyFormatter.format(milestoneAmount);
+
+    List<int> targetAdminIds = [];
+    if (adminId != null) {
+      targetAdminIds.add(adminId);
+    } else {
+      final admins = await db.query(
+        'users',
+        columns: ['id'],
+        where: "role = 'ADMIN'",
+      );
+      targetAdminIds = admins.map((a) => a['id'] as int).toList();
+    }
+
+    final now = DateTime.now().toIso8601String();
+    for (final aId in targetAdminIds) {
+      await db.insert('notifications', {
+        'user_id': aId,
+        'title': 'Mốc doanh thu mới',
+        'message': 'Doanh thu $periodName đã đạt mốc $formattedAmount!',
+        'type': 'REPORT',
+        'related_id': null,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
+
+  /// Thông báo cho toàn bộ Nhân viên (Employee) khi đơn hàng bị hủy
+  Future<void> notifyEmployeesOrderCancelled({
+    required String orderCode,
+    required String customerName,
+    int? orderId,
+  }) async {
+    final db = await _dbHelper.database;
+    final employees = await db.query(
+      'users',
+      columns: ['id'],
+      where: "role = 'EMPLOYEE'",
+    );
+
+    final now = DateTime.now().toIso8601String();
+    for (final emp in employees) {
+      final empId = emp['id'] as int;
+      await db.insert('notifications', {
+        'user_id': empId,
+        'title': 'Đơn hàng bị hủy',
+        'message': 'Đơn hàng $orderCode từ khách hàng $customerName đã bị hủy. Vui lòng kiểm tra và xử lý hoàn hàng.',
+        'type': 'ORDER',
+        'related_id': orderId,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
+
+  /// Thông báo cảnh báo tồn kho (gửi tới cả Admin và Employee)
+  Future<void> notifyStockAlert({
+    required String productName,
+    required int stockQuantity,
+    int? productId,
+  }) async {
+    final db = await _dbHelper.database;
+    final staff = await db.query(
+      'users',
+      columns: ['id'],
+      where: "role IN ('ADMIN', 'EMPLOYEE')",
+    );
+
+    final isOutOfStock = stockQuantity <= 0;
+    final title = isOutOfStock ? 'Cảnh báo hết hàng' : 'Cảnh báo sắp hết hàng';
+    final message = isOutOfStock
+        ? '$productName đã hết hàng trong kho. Vui lòng kiểm tra và nhập thêm hàng.'
+        : '$productName chỉ còn $stockQuantity sản phẩm trong kho.';
+
+    final now = DateTime.now().toIso8601String();
+    for (final person in staff) {
+      final staffId = person['id'] as int;
+      await db.insert('notifications', {
+        'user_id': staffId,
+        'title': title,
+        'message': message,
+        'type': 'STOCK',
+        'related_id': productId,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
+
+  /// Thông báo cho Quản trị viên (Admin) khi có thay đổi dữ liệu sản phẩm
+  Future<void> notifyAdminsProductChange({
+    required String productName,
+    required String action, // 'ADD', 'UPDATE', 'DELETE'
+    String actorName = 'nhân viên',
+    int? productId,
+  }) async {
+    final db = await _dbHelper.database;
+    final admins = await db.query(
+      'users',
+      columns: ['id'],
+      where: "role = 'ADMIN'",
+    );
+
+    String title;
+    String message;
+
+    switch (action.toUpperCase()) {
+      case 'ADD':
+        title = 'Thêm sản phẩm mới';
+        message = 'Sản phẩm $productName vừa được thêm bởi $actorName.';
+        break;
+      case 'DELETE':
+        title = 'Xóa sản phẩm';
+        message = 'Sản phẩm $productName vừa được xóa bởi $actorName.';
+        break;
+      case 'UPDATE':
+      default:
+        title = 'Cập nhật sản phẩm';
+        message = 'Sản phẩm $productName vừa được thay đổi dữ liệu bởi $actorName.';
+        break;
+    }
+
+    final now = DateTime.now().toIso8601String();
+    for (final admin in admins) {
+      final adminId = admin['id'] as int;
+      await db.insert('notifications', {
+        'user_id': adminId,
+        'title': title,
+        'message': message,
+        'type': 'PRODUCT',
+        'related_id': productId,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
+
+  /// Gửi thông báo chương trình khuyến mãi cho Khách hàng
+  Future<void> notifyCustomersPromotion({
+    required String title,
+    required String message,
+    int? customerId,
+  }) async {
+    final db = await _dbHelper.database;
+    List<int> targetCustomerIds = [];
+
+    if (customerId != null) {
+      targetCustomerIds.add(customerId);
+    } else {
+      final customers = await db.query(
+        'users',
+        columns: ['id'],
+        where: "role = 'CUSTOMER'",
+      );
+      targetCustomerIds = customers.map((c) => c['id'] as int).toList();
+    }
+
+    final now = DateTime.now().toIso8601String();
+    for (final cId in targetCustomerIds) {
+      await db.insert('notifications', {
+        'user_id': cId,
+        'title': title,
+        'message': message,
+        'type': 'PROMOTION',
+        'related_id': null,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
 }

@@ -134,6 +134,7 @@ class OrderRepository {
         'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}';
 
     Order? createdOrder;
+    final lowStockList = <({String name, int remainingStock, int id})>[];
 
     // Bắt đầu thực thi SQLite Transaction
     await db.transaction((txn) async {
@@ -160,12 +161,24 @@ class OrderRepository {
         }
       }
 
-      // BƯỚC 2: Trừ tồn kho sản phẩm trong bảng products
+      // BƯỚC 2: Trừ tồn kho sản phẩm trong bảng products và theo dõi cảnh báo tồn kho
       for (final item in items) {
         await txn.rawUpdate(
           'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?',
           [item.quantity, item.productId],
         );
+
+        final pRows = await txn.rawQuery(
+          'SELECT name, stock_quantity FROM products WHERE id = ?',
+          [item.productId],
+        );
+        if (pRows.isNotEmpty) {
+          final remStock = pRows.first['stock_quantity'] as int;
+          final pName = pRows.first['name'] as String;
+          if (remStock <= 5) {
+            lowStockList.add((name: pName, remainingStock: remStock, id: item.productId));
+          }
+        }
       }
 
       // BƯỚC 3: Thêm đơn hàng vào bảng orders
@@ -245,7 +258,7 @@ class OrderRepository {
       throw Exception('Không thể tạo đơn hàng do lỗi hệ thống.');
     }
 
-    // Gửi thông báo tự động cho Customer và Employee
+    // Gửi thông báo tự động cho Customer, Employee và cảnh báo tồn kho cho Staff
     try {
       final notifRepo = NotificationRepository();
       await notifRepo.notifyCustomerOrderPlaced(
@@ -259,6 +272,15 @@ class OrderRepository {
         finalAmount: finalAmount,
         orderId: confirmedOrder.id,
       );
+
+      // Cảnh báo tồn kho khi sản phẩm còn ít (<= 5) hoặc hết hàng (0)
+      for (final alert in lowStockList) {
+        await notifRepo.notifyStockAlert(
+          productName: alert.name,
+          stockQuantity: alert.remainingStock,
+          productId: alert.id,
+        );
+      }
     } catch (_) {}
 
     return confirmedOrder;
@@ -334,14 +356,20 @@ class OrderRepository {
       );
     });
 
-    // Gửi thông báo hủy đơn tới Customer
+    // Gửi thông báo hủy đơn tới Customer và toàn bộ Nhân viên (Employee)
     try {
       final orderCode = orderRows.first['order_code'] as String;
+      final customerName = (orderRows.first['customer_name'] as String?) ?? 'Khách hàng';
       final notifRepo = NotificationRepository();
       await notifRepo.notifyCustomerOrderStatusChange(
         userId: userId,
         orderCode: orderCode,
         status: 'CANCELLED',
+        orderId: orderId,
+      );
+      await notifRepo.notifyEmployeesOrderCancelled(
+        orderCode: orderCode,
+        customerName: customerName,
         orderId: orderId,
       );
     } catch (_) {}

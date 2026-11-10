@@ -581,35 +581,163 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _showSendMonthlyReportDialog,
-            icon: const Icon(Icons.mark_email_read_rounded),
-            label: const Text('Tạo thông báo báo cáo tháng mới'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _showSendRevenueReportDialog,
+                icon: const Icon(Icons.analytics_rounded),
+                label: const Text('Báo cáo doanh thu'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _showBroadcastPromotionDialog,
+                icon: const Icon(Icons.campaign_rounded),
+                label: const Text('Gửi khuyến mãi'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Future<void> _showSendMonthlyReportDialog() async {
+  Future<void> _showSendRevenueReportDialog() async {
     final now = DateTime.now();
-    final defaultMonth = 'tháng ${now.month}';
-    final controller = TextEditingController(text: defaultMonth);
+    final monthController = TextEditingController(text: 'tháng ${now.month}');
+    final milestoneController = TextEditingController(text: '5000000');
+    int reportType = 0; // 0: theo tháng, 1: theo mốc
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.assessment_outlined, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('Báo cáo doanh thu', style: TextStyle(fontSize: 18)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Chọn kiểu thông báo doanh thu muốn tạo cho Quản trị viên:',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('Theo tháng')),
+                  ButtonSegment(value: 1, label: Text('Theo mốc')),
+                ],
+                selected: {reportType},
+                onSelectionChanged: (val) => setState(() => reportType = val.first),
+              ),
+              const SizedBox(height: 16),
+              if (reportType == 0)
+                TextField(
+                  controller: monthController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên tháng báo cáo (ví dụ: tháng 10, tháng 11)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.calendar_month),
+                  ),
+                )
+              else
+                TextField(
+                  controller: milestoneController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Số tiền mốc doanh thu (VND)',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.monetization_on_outlined),
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Tạo thông báo'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final auth = context.read<AuthProvider>();
+      final adminId = auth.currentUser?.id ?? 1;
+      bool success = false;
+      String notifDesc = '';
+
+      if (reportType == 0) {
+        final monthName = monthController.text.trim().isEmpty ? 'tháng ${now.month}' : monthController.text.trim();
+        notifDesc = 'báo cáo doanh thu $monthName';
+        success = await context.read<AdminProvider>().sendMonthlyReportNotification(
+          monthName,
+          adminId: adminId,
+        );
+      } else {
+        final amount = double.tryParse(milestoneController.text.trim()) ?? 5000000;
+        notifDesc = 'mốc doanh thu ${CurrencyFormatter.format(amount)}';
+        success = await context.read<AdminProvider>().sendRevenueMilestoneNotification(
+          amount,
+          periodName: 'hôm nay',
+          adminId: adminId,
+        );
+      }
+
+      if (!mounted) return;
+      if (success) {
+        await context.read<NotificationProvider>().loadNotifications();
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Đã tạo thông báo $notifDesc thành công!'
+                : 'Lỗi khi tạo thông báo doanh thu',
+          ),
+          backgroundColor: success ? Colors.green : Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showBroadcastPromotionDialog() async {
+    final titleController = TextEditingController(text: 'Siêu Sale Tháng 11');
+    final messageController = TextEditingController(
+      text: 'Giảm giá tới 20% phụ kiện và miễn phí giao hàng cho đơn từ 500.000đ!',
+    );
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.assessment_outlined, color: Colors.blue),
+            Icon(Icons.campaign_outlined, color: Colors.orange),
             SizedBox(width: 8),
-            Text('Báo cáo doanh thu tháng', style: TextStyle(fontSize: 18)),
+            Text('Gửi thông báo khuyến mãi', style: TextStyle(fontSize: 18)),
           ],
         ),
         content: Column(
@@ -617,16 +745,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Tạo thông báo gửi tới Quản trị viên khi có báo cáo tháng mới:',
+              'Gửi thông báo chương trình khuyến mãi tới toàn bộ Khách hàng:',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             TextField(
-              controller: controller,
+              controller: titleController,
               decoration: const InputDecoration(
-                labelText: 'Tên tháng báo cáo (ví dụ: tháng 10, tháng 11)',
+                labelText: 'Tiêu đề khuyến mãi',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.calendar_month),
+                prefixIcon: Icon(Icons.title),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: messageController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                labelText: 'Nội dung khuyến mãi',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.description_outlined),
               ),
             ),
           ],
@@ -638,32 +776,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Tạo thông báo'),
+            child: const Text('Gửi tới khách hàng'),
           ),
         ],
       ),
     );
 
     if (confirmed == true && mounted) {
-      final monthName = controller.text.trim().isEmpty ? defaultMonth : controller.text.trim();
-      final auth = context.read<AuthProvider>();
-      final adminId = auth.currentUser?.id ?? 1;
-      final success = await context.read<AdminProvider>().sendMonthlyReportNotification(
-        monthName,
-        adminId: adminId,
+      final title = titleController.text.trim();
+      final message = messageController.text.trim();
+      if (title.isEmpty || message.isEmpty) return;
+
+      final success = await context.read<AdminProvider>().broadcastPromotionNotification(
+        title,
+        message,
       );
 
-      if (!mounted) return;
-      if (success) {
-        await context.read<NotificationProvider>().loadNotifications();
-      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             success
-                ? 'Đã tạo thông báo báo cáo doanh thu $monthName thành công!'
-                : 'Lỗi khi tạo thông báo báo cáo',
+                ? 'Đã gửi thông báo khuyến mãi tới toàn bộ khách hàng!'
+                : 'Lỗi khi gửi thông báo khuyến mãi',
           ),
           backgroundColor: success ? Colors.green : Colors.red,
           behavior: SnackBarBehavior.floating,

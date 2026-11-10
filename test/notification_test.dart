@@ -232,5 +232,125 @@ void main() {
       expect(notifProv.notifications.isEmpty, true);
       expect(notifProv.unreadCount, 0);
     });
+
+    test('Admin seed notifications cover monthly report, revenue milestone, stock alerts, and product changes', () async {
+      final notifRepo = NotificationRepository();
+      final adminNotifs = await notifRepo.getNotifications(1); // Admin id=1
+
+      // 1. Báo cáo doanh thu tháng 10
+      expect(
+        adminNotifs.any((n) => n.type == 'REPORT' && n.message.toLowerCase().contains('tháng 10')),
+        true,
+      );
+
+      // 2. Báo cáo doanh thu theo mốc
+      expect(
+        adminNotifs.any((n) => n.type == 'REPORT' && n.message.contains('5.000.000 VND')),
+        true,
+      );
+
+      // 3. Cảnh báo hết hàng
+      expect(
+        adminNotifs.any((n) => n.type == 'STOCK' && n.message.contains('đã hết hàng')),
+        true,
+      );
+
+      // 4. Cảnh báo tồn kho thấp (Keychron K2 chỉ còn 3 sản phẩm)
+      expect(
+        adminNotifs.any((n) => n.type == 'STOCK' && n.message.contains('chỉ còn 3 sản phẩm')),
+        true,
+      );
+
+      // 5. Thay đổi dữ liệu sản phẩm
+      expect(
+        adminNotifs.any((n) => n.type == 'PRODUCT' && n.message.contains('thay đổi dữ liệu bởi nhân viên')),
+        true,
+      );
+    });
+
+    test('Employee seed notifications cover orders to process, cancelled orders, and stock alerts', () async {
+      final notifRepo = NotificationRepository();
+      final empNotifs = await notifRepo.getNotifications(2); // Employee id=2
+
+      // 1. Đơn hàng mới cần xử lý
+      expect(
+        empNotifs.any((n) => n.type == 'ORDER' && n.title.contains('cần xử lý')),
+        true,
+      );
+
+      // 2. Đơn hàng bị hủy
+      expect(
+        empNotifs.any((n) => n.type == 'ORDER' && n.title.contains('bị hủy')),
+        true,
+      );
+
+      // 3. Cảnh báo hàng tồn kho
+      expect(
+        empNotifs.any((n) => n.type == 'STOCK' && n.message.contains('đã hết hàng')),
+        true,
+      );
+    });
+
+    test('Customer seed notifications cover placed orders, status changes, cancelled orders, and promotions', () async {
+      final notifRepo = NotificationRepository();
+
+      // Customer 1 (id=3)
+      final cust1Notifs = await notifRepo.getNotifications(3);
+      expect(cust1Notifs.any((n) => n.title.contains('Đặt hàng thành công')), true);
+      expect(cust1Notifs.any((n) => n.title.contains('giao thành công')), true);
+      expect(cust1Notifs.any((n) => n.title.contains('đã hủy')), true);
+      expect(cust1Notifs.any((n) => n.type == 'PROMOTION'), true);
+
+      // Customer 2 (id=4)
+      final cust2Notifs = await notifRepo.getNotifications(4);
+      expect(cust2Notifs.any((n) => n.title.contains('đang xử lý')), true);
+      expect(cust2Notifs.any((n) => n.type == 'PROMOTION'), true);
+    });
+
+    test('Cancelling an order notifies both Customer and Employees', () async {
+      final orderRepo = OrderRepository();
+      final notifRepo = NotificationRepository();
+
+      const customerId = 4;
+      const employeeId = 2;
+
+      final cartItem = CartItem(
+        id: 996,
+        userId: customerId,
+        productId: 1,
+        productName: 'iPhone 15 Pro Max 256GB',
+        productPrice: 29990000,
+        productImageUrl: '',
+        availableStock: 50,
+        quantity: 1,
+      );
+
+      final order = await orderRepo.createOrderWithTransaction(
+        userId: customerId,
+        customerName: 'Trần Thị B',
+        phone: '0912345678',
+        address: 'Đà Nẵng',
+        paymentMethod: 'COD',
+        items: [cartItem],
+      );
+
+      // Customer hủy đơn
+      final cancelResult = await orderRepo.cancelOrder(order.id!, customerId);
+      expect(cancelResult, true);
+
+      // Customer nhận thông báo hủy
+      final custNotifs = await notifRepo.getNotifications(customerId);
+      expect(
+        custNotifs.any((n) => n.message.contains(order.orderCode) && n.message.contains('đã bị hủy')),
+        true,
+      );
+
+      // Employee nhận thông báo đơn hàng bị hủy
+      final empNotifs = await notifRepo.getNotifications(employeeId);
+      expect(
+        empNotifs.any((n) => n.message.contains(order.orderCode) && n.title.contains('bị hủy')),
+        true,
+      );
+    });
   });
 }

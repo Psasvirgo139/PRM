@@ -168,7 +168,7 @@ class AdminRepository {
 
     final orderRows = await db.query(
       'orders',
-      columns: ['user_id', 'order_code'],
+      columns: ['user_id', 'order_code', 'customer_name'],
       where: 'id = ?',
       whereArgs: [orderId],
     );
@@ -191,6 +191,15 @@ class AdminRepository {
           status: newStatus,
           orderId: orderId,
         );
+
+        if (newStatus == 'CANCELLED') {
+          final customerName = (orderRows.first['customer_name'] as String?) ?? 'Khách hàng';
+          await notifRepo.notifyEmployeesOrderCancelled(
+            orderCode: orderCode,
+            customerName: customerName,
+            orderId: orderId,
+          );
+        }
       } catch (_) {}
     }
   }

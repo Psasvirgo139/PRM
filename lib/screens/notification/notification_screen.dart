@@ -53,10 +53,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
 
     // 2. Điều hướng tương ứng với loại thông báo & vai trò
-    if (item.type == 'REPORT') {
+    if (item.type == 'REPORT' || item.type == 'STOCK' || item.type == 'PRODUCT') {
       if (auth.isAdmin) {
         context.push('/admin');
+      } else if (auth.isEmployee) {
+        context.push('/admin/orders');
       }
+    } else if (item.type == 'PROMOTION') {
+      context.go('/');
     } else if (item.type == 'ORDER') {
       if (auth.canManageOrders) {
         if (item.relatedId != null) {
@@ -435,6 +439,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (item.type == 'REPORT') {
       return Icons.assessment_rounded;
     }
+    if (item.type == 'STOCK') {
+      return Icons.inventory_2_rounded;
+    }
+    if (item.type == 'PRODUCT') {
+      return Icons.edit_note_rounded;
+    }
+    if (item.type == 'PROMOTION') {
+      return Icons.local_offer_rounded;
+    }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();
     if (title.contains('thành công') || msg.contains('thành công') || msg.contains('đánh giá')) {
@@ -456,6 +469,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
     if (item.type == 'REPORT') {
       return Colors.purple.shade50;
     }
+    if (item.type == 'STOCK') {
+      return Colors.amber.shade50;
+    }
+    if (item.type == 'PRODUCT') {
+      return Colors.teal.shade50;
+    }
+    if (item.type == 'PROMOTION') {
+      return Colors.pink.shade50;
+    }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();
     if (title.contains('thành công') || msg.contains('thành công')) {
@@ -473,6 +495,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
   Color _getIconColor(NotificationItem item) {
     if (item.type == 'REPORT') {
       return Colors.purple.shade700;
+    }
+    if (item.type == 'STOCK') {
+      return Colors.amber.shade800;
+    }
+    if (item.type == 'PRODUCT') {
+      return Colors.teal.shade700;
+    }
+    if (item.type == 'PROMOTION') {
+      return Colors.pink.shade700;
     }
     final msg = item.message.toLowerCase();
     final title = item.title.toLowerCase();
