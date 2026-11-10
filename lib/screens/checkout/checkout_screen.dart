@@ -218,6 +218,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // 3. Làm mới giỏ hàng trong CartProvider sau khi transaction thành công
       cart.loadCart();
 
+      if (!mounted) return;
+
       if (_selectedPaymentMethod == 'PAYOS') {
         if (!mounted) return;
         // Hiển thị dialog đang khởi tạo thanh toán payOS

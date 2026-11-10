@@ -129,16 +129,9 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
-        title: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.compare_arrows_rounded, color: AppColors.primaryOrange),
-            SizedBox(width: 8),
-            Text(
-              'So Sánh Thông Số Đối Đầu',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+        title: const Text(
+          'So Sánh Thông Số Đối Đầu',
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [

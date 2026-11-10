@@ -3,6 +3,7 @@ import 'dart:math';
 import '../core/database/database_helper.dart';
 import '../models/cart_item.dart';
 import '../models/order.dart';
+import 'notification_repository.dart';
 
 class OutOfStockException implements Exception {
   final String productName;
@@ -130,9 +131,10 @@ class OrderRepository {
     final finalAmount = max(0.0, subtotal - discount + shippingFee);
     final now = DateTime.now();
     final orderCode =
-        'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}';
+        'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.microsecondsSinceEpoch % 1000000}-${Random().nextInt(900) + 100}';
 
     Order? createdOrder;
+    final lowStockList = <({String name, int remainingStock, int id})>[];
 
     // Bắt đầu thực thi SQLite Transaction
     await db.transaction((txn) async {
@@ -159,12 +161,24 @@ class OrderRepository {
         }
       }
 
-      // BƯỚC 2: Trừ tồn kho sản phẩm trong bảng products
+      // BƯỚC 2: Trừ tồn kho sản phẩm trong bảng products và theo dõi cảnh báo tồn kho
       for (final item in items) {
         await txn.rawUpdate(
           'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?',
           [item.quantity, item.productId],
         );
+
+        final pRows = await txn.rawQuery(
+          'SELECT name, stock_quantity FROM products WHERE id = ?',
+          [item.productId],
+        );
+        if (pRows.isNotEmpty) {
+          final remStock = pRows.first['stock_quantity'] as int;
+          final pName = pRows.first['name'] as String;
+          if (remStock <= 5) {
+            lowStockList.add((name: pName, remainingStock: remStock, id: item.productId));
+          }
+        }
       }
 
       // BƯỚC 3: Thêm đơn hàng vào bảng orders
@@ -239,11 +253,37 @@ class OrderRepository {
       );
     });
 
-    if (createdOrder == null) {
+    final confirmedOrder = createdOrder;
+    if (confirmedOrder == null) {
       throw Exception('Không thể tạo đơn hàng do lỗi hệ thống.');
     }
 
-    return createdOrder!;
+    // Gửi thông báo tự động cho Customer, Employee và cảnh báo tồn kho cho Staff
+    try {
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyCustomerOrderPlaced(
+        userId: userId,
+        orderCode: orderCode,
+        orderId: confirmedOrder.id,
+      );
+      await notifRepo.notifyEmployeesNewOrder(
+        orderCode: orderCode,
+        customerName: customerName.trim(),
+        finalAmount: finalAmount,
+        orderId: confirmedOrder.id,
+      );
+
+      // Cảnh báo tồn kho khi sản phẩm còn ít (<= 5) hoặc hết hàng (0)
+      for (final alert in lowStockList) {
+        await notifRepo.notifyStockAlert(
+          productName: alert.name,
+          stockQuantity: alert.remainingStock,
+          productId: alert.id,
+        );
+      }
+    } catch (_) {}
+
+    return confirmedOrder;
   }
 
   /// Lấy danh sách các đơn hàng của user
@@ -315,6 +355,24 @@ class OrderRepository {
         whereArgs: [orderId],
       );
     });
+
+    // Gửi thông báo hủy đơn tới Customer và toàn bộ Nhân viên (Employee)
+    try {
+      final orderCode = orderRows.first['order_code'] as String;
+      final customerName = (orderRows.first['customer_name'] as String?) ?? 'Khách hàng';
+      final notifRepo = NotificationRepository();
+      await notifRepo.notifyCustomerOrderStatusChange(
+        userId: userId,
+        orderCode: orderCode,
+        status: 'CANCELLED',
+        orderId: orderId,
+      );
+      await notifRepo.notifyEmployeesOrderCancelled(
+        orderCode: orderCode,
+        customerName: customerName,
+        orderId: orderId,
+      );
+    } catch (_) {}
 
     return true;
   }

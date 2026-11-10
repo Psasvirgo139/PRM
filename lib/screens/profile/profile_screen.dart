@@ -6,6 +6,7 @@ import '../../core/utils/responsive.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/notification_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -362,6 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               if (mounted) {
                 context.read<OrderProvider>().clearUserOrders();
                 context.read<CartProvider>().clearLocalCart();
+                context.read<NotificationProvider>().clearLocal();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Đã đăng xuất'),
@@ -810,6 +812,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: const Text('Thay đổi mật khẩu đăng nhập của bạn', style: TextStyle(fontSize: 12)),
             trailing: const Icon(Icons.chevron_right),
             onTap: _showChangePasswordDialog,
+          ),
+
+          // Mục Thông báo
+          const Divider(height: 1),
+          Consumer<NotificationProvider>(
+            builder: (context, notifProv, _) {
+              final unread = notifProv.unreadCount;
+              return ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.notifications_outlined, color: Colors.blue),
+                ),
+                title: const Text('Thông báo', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text(
+                  unread > 0 ? 'Bạn có $unread thông báo mới chưa đọc' : 'Xem thông báo đơn hàng & hệ thống',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (unread > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '$unread',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+                onTap: () => context.push('/notifications'),
+              );
+            },
           ),
 
           // Nếu là Admin thì có đường dẫn tới Admin Dashboard

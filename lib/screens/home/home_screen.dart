@@ -8,6 +8,7 @@ import '../../core/utils/responsive.dart';
 import '../../models/product.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/compare_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../widgets/app_drawer.dart';
@@ -105,6 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final cart = context.watch<CartProvider>();
+    final notifProvider = context.watch<NotificationProvider>();
     final productProvider = context.watch<ProductProvider>();
 
     final categories = productProvider.categories;
@@ -150,48 +152,16 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push(auth.isAdmin ? '/admin' : '/admin/orders'),
             ),
 
-          // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
-          if (!auth.canManageOrders)
-            IconButton(
-              icon: const Icon(Icons.receipt_long_outlined),
-              tooltip: 'Đơn hàng của tôi',
-              onPressed: () => context.push('/orders'),
-            ),
-
-          // So sánh đối đầu thông số kỹ thuật (Smart Specs)
-          Consumer<CompareProvider>(
-            builder: (_, compare, _) => IconButton(
-              icon: Badge.count(
-                count: compare.count,
-                isLabelVisible: compare.count > 0,
-                backgroundColor: AppColors.primaryOrange,
-                child: const Icon(Icons.compare_arrows_rounded),
-              ),
-              tooltip: 'So sánh đối đầu',
-              onPressed: () => context.push('/compare'),
-            ),
-          ),
-          // Vòng quay may mắn (Lucky Wheel) - Logo vòng quay chuẩn thiết kế theo hình mẫu
+          // Thông báo kèm Badge số lượng chưa đọc
           IconButton(
-            tooltip: 'Vòng quay may mắn',
-            onPressed: () {
-              if (!auth.isLoggedIn) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Vui lòng đăng nhập để tham gia Vòng quay may mắn!'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                context.push('/login');
-              } else {
-                context.push('/lucky-wheel');
-              }
-            },
-            icon: const LuckyWheelLogo(
-              size: 26,
-              strokeColor: AppColors.textPrimary,
-              fillColor: Colors.white,
+            icon: Badge.count(
+              count: notifProvider.unreadCount,
+              isLabelVisible: notifProvider.unreadCount > 0,
+              backgroundColor: AppColors.primaryOrange,
+              child: const Icon(Icons.notifications_outlined),
             ),
+            tooltip: 'Thông báo',
+            onPressed: () => context.push('/notifications'),
           ),
 
           // Giỏ hàng kèm Badge số lượng

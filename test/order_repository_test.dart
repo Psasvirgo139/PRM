@@ -6,9 +6,11 @@ import 'package:prm/repositories/admin_repository.dart';
 import 'package:prm/repositories/order_repository.dart';
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+    final db = await DatabaseHelper.instance.database;
+    await db.rawUpdate('UPDATE products SET stock_quantity = 50');
   });
 
   tearDownAll(() async {
