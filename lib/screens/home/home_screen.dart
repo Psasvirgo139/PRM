@@ -152,14 +152,6 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push(auth.isAdmin ? '/admin' : '/admin/orders'),
             ),
 
-          // Lịch sử đơn hàng (Chỉ dành cho Khách hàng)
-          if (!auth.canManageOrders)
-            IconButton(
-              icon: const Icon(Icons.receipt_long_outlined),
-              tooltip: 'Đơn hàng của tôi',
-              onPressed: () => context.push('/orders'),
-            ),
-
           // Thông báo kèm Badge số lượng chưa đọc
           IconButton(
             icon: Badge.count(
@@ -170,43 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             tooltip: 'Thông báo',
             onPressed: () => context.push('/notifications'),
-          ),
-
-          // So sánh đối đầu thông số kỹ thuật (Smart Specs)
-          Consumer<CompareProvider>(
-            builder: (_, compare, _) => IconButton(
-              icon: Badge.count(
-                count: compare.count,
-                isLabelVisible: compare.count > 0,
-                backgroundColor: AppColors.primaryOrange,
-                child: const Icon(Icons.compare_arrows_rounded),
-              ),
-              tooltip: 'So sánh đối đầu',
-              onPressed: () => context.push('/compare'),
-            ),
-          ),
-
-          // Vòng quay may mắn (Lucky Wheel) - Logo vòng quay chuẩn thiết kế theo hình mẫu
-          IconButton(
-            tooltip: 'Vòng quay may mắn',
-            onPressed: () {
-              if (!auth.isLoggedIn) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Vui lòng đăng nhập để tham gia Vòng quay may mắn!'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                context.push('/login');
-              } else {
-                context.push('/lucky-wheel');
-              }
-            },
-            icon: const LuckyWheelLogo(
-              size: 26,
-              strokeColor: AppColors.textPrimary,
-              fillColor: Colors.white,
-            ),
           ),
 
           // Giỏ hàng kèm Badge số lượng
