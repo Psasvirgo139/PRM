@@ -25,13 +25,6 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final compare = context.read<CompareProvider>();
-      // Nếu chưa có sản phẩm nào, tự động nạp mẫu 2 điện thoại để demo đối đầu ngay
-      if (compare.count == 0) {
-        compare.loadDefaultDemoComparison();
-      }
-    });
   }
 
   @override
