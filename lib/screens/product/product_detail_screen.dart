@@ -308,16 +308,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     _buildDescriptionSection(product),
                     const SizedBox(height: 20),
 
-                // Thông số
-                _buildSpecificationsCard(product, categoryName),
-                const SizedBox(height: 20),
-
-                // So sánh đối đầu
-                _buildComparisonActionSection(context, product, categoryName),
-              ],
-            ),
                     // Thông số
                     _buildSpecificationsCard(product, categoryName),
+                    const SizedBox(height: 20),
+
+                    // So sánh đối đầu
+                    _buildComparisonActionSection(context, product, categoryName),
                   ],
                 ),
               ),

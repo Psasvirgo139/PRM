@@ -205,6 +205,9 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(user_id, quest_date)
+      )
+    ''');
+
     // 7. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
     await db.execute('''
       CREATE TABLE reviews (
