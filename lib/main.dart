@@ -15,6 +15,7 @@ import 'providers/cart_provider.dart';
 import 'providers/voucher_provider.dart';
 import 'providers/quest_provider.dart';
 import 'providers/lucky_wheel_provider.dart';
+import 'providers/review_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,6 +49,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => ReviewProvider()),
         // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProxyProvider<AuthProvider, CartProvider>(

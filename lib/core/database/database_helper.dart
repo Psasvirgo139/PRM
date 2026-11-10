@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -166,6 +167,21 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         UNIQUE(user_id, quest_date)
+    // 7. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
+    await db.execute('''
+      CREATE TABLE reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        user_avatar TEXT,
+        rating REAL NOT NULL,
+        comment TEXT NOT NULL,
+        images TEXT,
+        is_verified_buyer INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
@@ -180,6 +196,7 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS user_spins');
       await db.execute('DROP TABLE IF EXISTS user_vouchers');
       await db.execute('DROP TABLE IF EXISTS vouchers');
+      await db.execute('DROP TABLE IF EXISTS reviews');
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
       await db.execute('DROP TABLE IF EXISTS cart_items');
@@ -187,6 +204,27 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS categories');
       await db.execute('DROP TABLE IF EXISTS users');
       await _createDB(db, newVersion);
+      return;
+    }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          user_name TEXT NOT NULL,
+          user_avatar TEXT,
+          rating REAL NOT NULL,
+          comment TEXT NOT NULL,
+          images TEXT,
+          is_verified_buyer INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+      await _seedReviewsData(db);
     }
   }
 
@@ -560,6 +598,104 @@ class DatabaseHelper {
       'is_used': 0,
       'acquired_at': now,
     });
+    // 5. Seed Reviews
+    await _seedReviewsData(db);
+  }
+
+  Future<void> _seedReviewsData(Database db) async {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1)).toIso8601String();
+    final twoDaysAgo = now.subtract(const Duration(days: 2)).toIso8601String();
+    final threeDaysAgo = now.subtract(const Duration(days: 3)).toIso8601String();
+    final fourDaysAgo = now.subtract(const Duration(days: 4)).toIso8601String();
+
+    final reviews = [
+      // Product 1: iPhone 15 Pro Max
+      {
+        'product_id': 1,
+        'user_id': 3,
+        'user_name': 'Nguyễn Văn A',
+        'user_avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+        'rating': 5.0,
+        'comment': 'Máy cầm rất đầm tay, viền titan tự nhiên nhìn cực kỳ sang trọng. Camera zoom 5x chụp nét căng, pin trâu dùng cả ngày từ sáng đến tối vẫn còn 35%. Rất hài lòng với dịch vụ giao hàng nhanh của shop!',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600',
+          'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': yesterday,
+      },
+      {
+        'product_id': 1,
+        'user_id': 4,
+        'user_name': 'Trần Thị B',
+        'user_avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        'rating': 5.0,
+        'comment': 'Giao hàng siêu nhanh chỉ trong 2 tiếng tại nội thành! Đóng gói cẩn thận 3 lớp chống sốc, nguyên seal chính hãng VN/A kích hoạt bảo hành đủ 12 tháng Apple.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': twoDaysAgo,
+      },
+      {
+        'product_id': 1,
+        'user_id': 2,
+        'user_name': 'Lê Minh Khang',
+        'user_avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+        'rating': 4.0,
+        'comment': 'Màn hình ProMotion 120Hz mượt mà, dynamic island tiện dụng. Điểm trừ nhẹ là hộp không kèm củ sạc nên phải mua thêm củ sạc nhanh 30W.',
+        'images': jsonEncode([]),
+        'is_verified_buyer': 0,
+        'created_at': threeDaysAgo,
+      },
+      // Product 4: AirPods Pro 2
+      {
+        'product_id': 4,
+        'user_id': 3,
+        'user_name': 'Nguyễn Văn A',
+        'user_avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+        'rating': 5.0,
+        'comment': 'Chống ồn chủ động đỉnh chóp, ngồi quán cafe bật ANC là im bặt tiếng ồn. Âm bass trầm ấm, cổng Type-C tiện lợi chung sạc với điện thoại.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': yesterday,
+      },
+      // Product 3: MacBook Air M3
+      {
+        'product_id': 3,
+        'user_id': 4,
+        'user_name': 'Trần Thị B',
+        'user_avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        'rating': 5.0,
+        'comment': 'MacBook Air M3 mỏng nhẹ tinh tế, khởi động tức thì. Bàn phím gõ êm, trackpad rê vuốt mượt mà, pin dùng làm việc cả ngày không cần cắm sạc.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': fourDaysAgo,
+      },
+      // Product 5: Keychron K2
+      {
+        'product_id': 5,
+        'user_id': 3,
+        'user_name': 'Hoàng Nam',
+        'user_avatar': null,
+        'rating': 5.0,
+        'comment': 'Bàn phím cơ gõ rất đầm tay, switch G Pro mượt không bị rung lắc. Kết nối bluetooth 3 thiết bị chuyển qua lại rất mượt.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600',
+        ]),
+        'is_verified_buyer': 0,
+        'created_at': threeDaysAgo,
+      },
+    ];
+
+    for (final r in reviews) {
+      await db.insert('reviews', r);
+    }
   }
 
   Future<void> close() async {
