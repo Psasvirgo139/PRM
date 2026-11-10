@@ -170,6 +170,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             tooltip: 'Thông báo',
             onPressed: () => context.push('/notifications'),
+          ),
+
           // So sánh đối đầu thông số kỹ thuật (Smart Specs)
           Consumer<CompareProvider>(
             builder: (_, compare, _) => IconButton(
@@ -181,6 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               tooltip: 'So sánh đối đầu',
               onPressed: () => context.push('/compare'),
+            ),
+          ),
+
           // Vòng quay may mắn (Lucky Wheel) - Logo vòng quay chuẩn thiết kế theo hình mẫu
           IconButton(
             tooltip: 'Vòng quay may mắn',

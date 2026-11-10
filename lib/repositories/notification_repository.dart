@@ -363,4 +363,81 @@ class NotificationRepository {
       });
     }
   }
+
+  /// Thông báo cho khách hàng khi nhận/trúng voucher (từ Vòng quay may mắn hoặc sự kiện)
+  Future<void> notifyCustomerWonVoucher({
+    required int userId,
+    required String voucherTitle,
+    required String voucherCode,
+    int? voucherId,
+  }) async {
+    await createNotification(
+      NotificationItem(
+        userId: userId,
+        title: 'Trúng Voucher May Mắn!',
+        message: 'Chúc mừng bạn đã quay trúng voucher $voucherTitle ($voucherCode). Hãy vào Kho Voucher để sử dụng ngay!',
+        type: 'VOUCHER',
+        relatedId: voucherId,
+        createdAt: DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  /// Thông báo khi khách hàng gửi đánh giá sản phẩm (gửi cảm ơn cho Khách và thông báo cho Quản trị viên)
+  Future<void> notifyReviewSubmitted({
+    required int customerId,
+    required String customerName,
+    required int productId,
+    required double rating,
+    required String comment,
+  }) async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now().toIso8601String();
+    final starText = rating.toInt();
+
+    // 1. Lấy tên sản phẩm để thông báo rõ ràng
+    String prodName = 'Sản phẩm';
+    final prodRows = await db.query(
+      'products',
+      columns: ['name'],
+      where: 'id = ?',
+      whereArgs: [productId],
+    );
+    if (prodRows.isNotEmpty) {
+      prodName = prodRows.first['name'] as String;
+    }
+
+    // 2. Gửi thông báo cảm ơn cho khách hàng
+    await createNotification(
+      NotificationItem(
+        userId: customerId,
+        title: 'Đánh giá sản phẩm thành công',
+        message: 'Cảm ơn bạn đã đánh giá $starText sao cho "$prodName"! Đóng góp của bạn giúp cộng đồng mua sắm tốt hơn.',
+        type: 'REVIEW',
+        relatedId: productId,
+        createdAt: now,
+      ),
+    );
+
+    // 3. Gửi thông báo cho Admin
+    final admins = await db.query(
+      'users',
+      columns: ['id'],
+      where: "role = 'ADMIN'",
+    );
+
+    final snippet = comment.length > 50 ? '${comment.substring(0, 50)}...' : comment;
+    for (final admin in admins) {
+      final adminId = admin['id'] as int;
+      await db.insert('notifications', {
+        'user_id': adminId,
+        'title': 'Đánh giá sản phẩm mới',
+        'message': 'Khách hàng $customerName vừa đánh giá $starText sao cho "$prodName": "$snippet"',
+        'type': 'REVIEW',
+        'related_id': productId,
+        'is_read': 0,
+        'created_at': now,
+      });
+    }
+  }
 }

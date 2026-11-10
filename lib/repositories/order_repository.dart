@@ -131,7 +131,7 @@ class OrderRepository {
     final finalAmount = max(0.0, subtotal - discount + shippingFee);
     final now = DateTime.now();
     final orderCode =
-        'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${Random().nextInt(9000) + 1000}';
+        'ORD-${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}-${now.microsecondsSinceEpoch % 1000000}-${Random().nextInt(900) + 100}';
 
     Order? createdOrder;
     final lowStockList = <({String name, int remainingStock, int id})>[];

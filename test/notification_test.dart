@@ -352,5 +352,22 @@ void main() {
         true,
       );
     });
+
+    test('Customer and Admin seed notifications include Voucher and Review types', () async {
+      final notifRepo = NotificationRepository();
+
+      // Customer 1 (id=3) có thông báo voucher may mắn và đánh giá
+      final cust1Notifs = await notifRepo.getNotifications(3);
+      expect(cust1Notifs.any((n) => n.type == 'VOUCHER'), true);
+      expect(cust1Notifs.any((n) => n.type == 'REVIEW'), true);
+
+      // Customer 2 (id=4) có thông báo đánh giá
+      final cust2Notifs = await notifRepo.getNotifications(4);
+      expect(cust2Notifs.any((n) => n.type == 'REVIEW'), true);
+
+      // Admin (id=1) có thông báo đánh giá sản phẩm mới từ khách
+      final adminNotifs = await notifRepo.getNotifications(1);
+      expect(adminNotifs.any((n) => n.type == 'REVIEW'), true);
+    });
   });
 }

@@ -308,16 +308,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     _buildDescriptionSection(product),
                     const SizedBox(height: 20),
 
-                // Thông số
-                _buildSpecificationsCard(product, categoryName),
-                const SizedBox(height: 20),
-
-                // So sánh đối đầu
-                _buildComparisonActionSection(context, product, categoryName),
-              ],
-            ),
-                    // Thông số
+                    // Thông số kỹ thuật
                     _buildSpecificationsCard(product, categoryName),
+                    const SizedBox(height: 20),
+
+                    // So sánh đối đầu
+                    _buildComparisonActionSection(context, product, categoryName),
                   ],
                 ),
               ),
@@ -362,6 +358,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 _buildDescriptionSection(product),
                 const SizedBox(height: 20),
                 _buildSpecificationsCard(product, categoryName),
+                const SizedBox(height: 20),
+
+                // So sánh đối đầu
+                _buildComparisonActionSection(context, product, categoryName),
                 const SizedBox(height: 24),
 
                 // Phân hệ Đánh giá & Chấm điểm sản phẩm trên Mobile
