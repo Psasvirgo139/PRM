@@ -115,3 +115,66 @@ class SpecComparisonResult {
   });
 }
 
+/// Bảng điểm chi tiết & Nhận định đối đầu (Smart Specs Scoring & Verdict)
+class ProductScoreBreakdown {
+  final double performanceScore; // 0 - 10
+  final double displayScore; // 0 - 10
+  final double cameraScore; // 0 - 10
+  final double batteryScore; // 0 - 10
+  final double overallScore; // Điểm tổng thể 0 - 10
+  final String verdictBadge; // Huy hiệu nhận định: "Quán quân toàn diện", "Hiệu năng đỉnh chóp"...
+  final List<String> keyStrengths; // 2-3 điểm mạnh vượt trội
+  final bool isWinner; // Sản phẩm dẫn đầu cuộc đối đầu
+
+  const ProductScoreBreakdown({
+    required this.performanceScore,
+    required this.displayScore,
+    required this.cameraScore,
+    required this.batteryScore,
+    required this.overallScore,
+    required this.verdictBadge,
+    required this.keyStrengths,
+    this.isWinner = false,
+  });
+
+  ProductScoreBreakdown copyWith({
+    double? performanceScore,
+    double? displayScore,
+    double? cameraScore,
+    double? batteryScore,
+    double? overallScore,
+    String? verdictBadge,
+    List<String>? keyStrengths,
+    bool? isWinner,
+  }) {
+    return ProductScoreBreakdown(
+      performanceScore: performanceScore ?? this.performanceScore,
+      displayScore: displayScore ?? this.displayScore,
+      cameraScore: cameraScore ?? this.cameraScore,
+      batteryScore: batteryScore ?? this.batteryScore,
+      overallScore: overallScore ?? this.overallScore,
+      verdictBadge: verdictBadge ?? this.verdictBadge,
+      keyStrengths: keyStrengths ?? this.keyStrengths,
+      isWinner: isWinner ?? this.isWinner,
+    );
+  }
+}
+
+/// Preset các cặp đấu / tam đấu kinh điển 1-chạm
+class ComparisonPreset {
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<String> productKeywords;
+
+  const ComparisonPreset({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.productKeywords,
+  });
+}
+
+

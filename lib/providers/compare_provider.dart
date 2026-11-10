@@ -15,6 +15,7 @@ class CompareProvider extends ChangeNotifier {
   bool _highlightBestSpecs = true;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _selectedGroupId; // null nghĩa là hiển thị "Tất cả các nhóm"
 
   // Getters
   List<Product> get selectedProducts => List.unmodifiable(_selectedProducts);
@@ -23,6 +24,8 @@ class CompareProvider extends ChangeNotifier {
   bool get highlightBestSpecs => _highlightBestSpecs;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get selectedGroupId => _selectedGroupId;
+  List<ComparisonPreset> get presets => CompareRepository.defaultPresets;
 
   int get count => _selectedProducts.length;
   bool get canCompare => _selectedProducts.length >= 2;
@@ -242,6 +245,76 @@ class CompareProvider extends ChangeNotifier {
     }
 
     return results;
+  }
+
+  /// Đặt nhóm thông số đang chọn để lọc nhanh (null: xem tất cả)
+  void setSelectedGroupId(String? groupId) {
+    if (_selectedGroupId == groupId) {
+      _selectedGroupId = null; // Bấm lại nhóm đang chọn để mở lại "Tất cả"
+    } else {
+      _selectedGroupId = groupId;
+    }
+    notifyListeners();
+  }
+
+  /// Áp dụng bộ so sánh cặp đấu kinh điển 1-chạm
+  Future<void> applyPreset(ComparisonPreset preset) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final products = await _repository.getProductsForPreset(preset);
+      _selectedProducts.clear();
+      _specsCache.clear();
+
+      for (final p in products) {
+        if (p.id != null) {
+          _selectedProducts.add(p);
+          final specs = await _repository.getProductSpecs(p);
+          _specsCache[p.id!] = specs;
+        }
+      }
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _errorMessage = 'Lỗi nạp cặp đấu: $e';
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Tính toán điểm số 4 trụ cột và nhận diện máy chiến thắng đối đầu
+  Map<int, ProductScoreBreakdown> getScoreBreakdowns() {
+    final Map<int, ProductScoreBreakdown> map = {};
+    if (_selectedProducts.isEmpty) return map;
+
+    double highestOverall = -1.0;
+    int? winnerId;
+
+    for (final p in _selectedProducts) {
+      if (p.id == null) continue;
+      final specs = _specsCache[p.id!];
+      if (specs != null) {
+        final score = _repository.calculateScore(p, specs);
+        map[p.id!] = score;
+        if (score.overallScore > highestOverall) {
+          highestOverall = score.overallScore;
+          winnerId = p.id;
+        }
+      }
+    }
+
+    // Đánh dấu người chiến thắng nếu có từ 2 sản phẩm trở lên
+    if (_selectedProducts.length >= 2 && winnerId != null) {
+      final currentWinner = map[winnerId];
+      if (currentWinner != null) {
+        map[winnerId] = currentWinner.copyWith(isWinner: true);
+      }
+    }
+
+    return map;
   }
 
   /// Nạp sẵn 2 sản phẩm điện thoại tiêu biểu để tiện demo đối đầu ngay lập tức

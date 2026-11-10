@@ -7,6 +7,233 @@ import '../models/product_spec.dart';
 class CompareRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
+  /// Danh sách các cặp đấu / tam đấu kinh điển có sẵn 1-chạm
+  static const List<ComparisonPreset> defaultPresets = [
+    ComparisonPreset(
+      id: 'flagship_trio',
+      title: 'Tam Đấu Flagship 2024',
+      subtitle: 'iPhone 15 Pro Max vs S24 Ultra vs Xiaomi 14 Ultra',
+      icon: Icons.military_tech_rounded,
+      productKeywords: ['iPhone 15 Pro Max', 'S24 Ultra', 'Xiaomi 14 Ultra'],
+    ),
+    ComparisonPreset(
+      id: 'apple_samsung',
+      title: 'Apple vs Samsung',
+      subtitle: 'iPhone 15 Pro Max vs Galaxy S24 Ultra',
+      icon: Icons.sports_mma_rounded,
+      productKeywords: ['iPhone 15 Pro Max', 'S24 Ultra'],
+    ),
+    ComparisonPreset(
+      id: 'camera_duel',
+      title: 'Đại Chiến Camera',
+      subtitle: 'S24 Ultra (200MP) vs Xiaomi 14 Ultra (Leica)',
+      icon: Icons.camera_alt_rounded,
+      productKeywords: ['S24 Ultra', 'Xiaomi 14 Ultra'],
+    ),
+    ComparisonPreset(
+      id: 'ultrabook_battle',
+      title: 'Ultrabook: M3 vs XPS',
+      subtitle: 'MacBook Air M3 vs Dell XPS 13 OLED',
+      icon: Icons.laptop_mac_rounded,
+      productKeywords: ['MacBook Air M3', 'Dell XPS 13'],
+    ),
+    ComparisonPreset(
+      id: 'gaming_vs_mac',
+      title: 'Gaming RTX vs Mỏng Nhẹ',
+      subtitle: 'Asus ROG Zephyrus G14 vs MacBook Air M3',
+      icon: Icons.sports_esports_rounded,
+      productKeywords: ['Zephyrus G14', 'MacBook Air M3'],
+    ),
+  ];
+
+  /// Tìm nạp các sản phẩm trong database phù hợp với preset
+  Future<List<Product>> getProductsForPreset(ComparisonPreset preset) async {
+    final List<Product> matched = [];
+    final db = await _dbHelper.database;
+
+    for (final keyword in preset.productKeywords) {
+      final rows = await db.query(
+        'products',
+        where: 'name LIKE ?',
+        whereArgs: ['%$keyword%'],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) {
+        matched.add(Product.fromMap(rows.first));
+      }
+    }
+    return matched;
+  }
+
+  /// Tính điểm 4 trụ cột và nhận định chi tiết cho sản phẩm (Smart Specs Scoring)
+  ProductScoreBreakdown calculateScore(Product product, ProductSpecs specs) {
+    final nameLower = product.name.toLowerCase();
+
+    // 1. iPhone 15 Pro Max
+    if (nameLower.contains('iphone 15 pro max')) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.8,
+        displayScore: 9.6,
+        cameraScore: 9.5,
+        batteryScore: 9.3,
+        overallScore: 9.6,
+        verdictBadge: 'Hiệu năng đỉnh cao & Ổn định dài lâu',
+        keyStrengths: [
+          'Chip Apple A17 Pro 3nm hàng đầu',
+          'Khung viền Titan siêu nhẹ & bền bỉ',
+          'Quay video ProRes Log chuyên nghiệp',
+        ],
+      );
+    }
+
+    // 2. Samsung Galaxy S24 Ultra
+    if (nameLower.contains('s24 ultra')) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.6,
+        displayScore: 9.9,
+        cameraScore: 9.8,
+        batteryScore: 9.5,
+        overallScore: 9.7,
+        verdictBadge: 'Toàn năng số 1 & Màn hình vô địch',
+        keyStrengths: [
+          'Màn hình chống chói 2600 nits & kính Armor',
+          'Bút S-Pen tích hợp cùng bộ công cụ Galaxy AI',
+          'Camera 200MP zoom quang 5x - Space Zoom 100x',
+        ],
+      );
+    }
+
+    // 3. Xiaomi 14 Ultra
+    if (nameLower.contains('xiaomi 14 ultra')) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.5,
+        displayScore: 9.7,
+        cameraScore: 9.9,
+        batteryScore: 9.7,
+        overallScore: 9.7,
+        verdictBadge: 'Vua nhiếp ảnh Leica & Sạc siêu tốc',
+        keyStrengths: [
+          'Cụm 4 camera Leica cảm biến 1-inch khẩu độ vô cấp',
+          'Sạc siêu tốc 90W có dây & 80W không dây',
+          'Pin khủng 5.300 mAh Silicon-Carbon',
+        ],
+      );
+    }
+
+    // 4. MacBook Air M3
+    if (nameLower.contains('macbook air') || (nameLower.contains('macbook') && nameLower.contains('m3'))) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.4,
+        displayScore: 9.3,
+        cameraScore: 8.8,
+        batteryScore: 9.8,
+        overallScore: 9.3,
+        verdictBadge: 'Vô địch thời lượng pin & Di động',
+        keyStrengths: [
+          'Thời lượng pin thực tế 18 giờ liên tục',
+          'Chip M3 mạnh mẽ, hoàn toàn không quạt ồn',
+          'Thiết kế nhôm nguyên khối sang trọng 1.24kg',
+        ],
+      );
+    }
+
+    // 5. Dell XPS 13
+    if (nameLower.contains('dell xps') || nameLower.contains('xps 13')) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.2,
+        displayScore: 9.5,
+        cameraScore: 8.6,
+        batteryScore: 8.7,
+        overallScore: 9.0,
+        verdictBadge: 'Thiết kế tương lai & Màn hình OLED',
+        keyStrengths: [
+          'Màn hình OLED 3K cảm ứng siêu nét',
+          'Hàng phím cảm ứng tàng hình & Touchpad liền mạch',
+          'Trọng lượng siêu nhẹ chỉ 1.19kg',
+        ],
+      );
+    }
+
+    // 6. Asus ROG Zephyrus G14
+    if (nameLower.contains('zephyrus') || nameLower.contains('rog')) {
+      return const ProductScoreBreakdown(
+        performanceScore: 9.7,
+        displayScore: 9.6,
+        cameraScore: 8.7,
+        batteryScore: 8.8,
+        overallScore: 9.2,
+        verdictBadge: 'Quái thú đồ họa Gaming mỏng nhẹ',
+        keyStrengths: [
+          'NVIDIA RTX 4060 chiến mọi tựa game AAA',
+          'Màn hình OLED 3K 120Hz 0.2ms Nebula',
+          'Khung nhôm CNC siêu mỏng chỉ 1.5kg',
+        ],
+      );
+    }
+
+    // Điểm số tính tự động cho các thiết bị khác dựa trên dữ liệu thông số
+    double perf = 8.0;
+    double disp = 8.0;
+    double cam = 8.0;
+    double bat = 8.0;
+
+    final ramItem = specs.findSpec('ram');
+    if (ramItem?.numericValue != null) {
+      if (ramItem!.numericValue! >= 16) {
+        perf += 1.2;
+      } else if (ramItem.numericValue! >= 8) {
+        perf += 0.8;
+      } else {
+        perf += 0.3;
+      }
+    }
+
+    final batItem = specs.findSpec('battery') ?? specs.findSpec('battery_wh');
+    if (batItem?.numericValue != null) {
+      if (batItem!.numericValue! >= 5000 || batItem.numericValue! >= 70) {
+        bat += 1.3;
+      } else if (batItem.numericValue! >= 4000 || batItem.numericValue! >= 50) {
+        bat += 0.9;
+      } else {
+        bat += 0.5;
+      }
+    }
+
+    final hzItem = specs.findSpec('refresh_rate');
+    if (hzItem?.numericValue != null && hzItem!.numericValue! >= 120) {
+      disp += 1.2;
+    } else {
+      disp += 0.6;
+    }
+
+    if (product.price > 20000000) {
+      cam += 1.2;
+    } else if (product.price > 10000000) {
+      cam += 0.7;
+    }
+
+    perf = double.parse(perf.clamp(6.0, 9.9).toStringAsFixed(1));
+    disp = double.parse(disp.clamp(6.0, 9.9).toStringAsFixed(1));
+    cam = double.parse(cam.clamp(6.0, 9.9).toStringAsFixed(1));
+    bat = double.parse(bat.clamp(6.0, 9.9).toStringAsFixed(1));
+
+    final overall = double.parse(((perf + disp + cam + bat) / 4).toStringAsFixed(1));
+
+    return ProductScoreBreakdown(
+      performanceScore: perf,
+      displayScore: disp,
+      cameraScore: cam,
+      batteryScore: bat,
+      overallScore: overall,
+      verdictBadge: overall >= 9.0 ? 'Sản phẩm cao cấp toàn diện' : 'Lựa chọn cân bằng p/p tốt',
+      keyStrengths: [
+        if (ramItem != null) 'RAM ${ramItem.value}',
+        if (batItem != null) 'Pin ${batItem.value}',
+        'Bảo hành chính hãng 12 tháng',
+      ],
+    );
+  }
+
   /// Lấy toàn bộ thông số chi tiết của sản phẩm theo ID
   Future<ProductSpecs> getProductSpecs(Product product) async {
     // 1. Kiểm tra nếu có dữ liệu cấu hình thông số chuẩn

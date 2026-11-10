@@ -122,5 +122,49 @@ void main() {
         expect(r.isDifferent, true); // Tất cả kết quả trả về phải là khác biệt
       }
     });
+
+    test('4. Smart Specs Scoring & Verdict: 4-pillar breakdown & overall winner', () async {
+      final provider = CompareProvider();
+      await provider.addProduct(p1);
+      await provider.addProduct(p2);
+
+      final scores = provider.getScoreBreakdowns();
+      expect(scores.containsKey(p1.id), true);
+      expect(scores.containsKey(p2.id), true);
+
+      final score1 = scores[p1.id!]!;
+      final score2 = scores[p2.id!]!;
+
+      // Cả 2 đều có điểm 4 trụ cột hợp lệ (> 8.0)
+      expect(score1.performanceScore >= 8.0, true);
+      expect(score1.displayScore >= 8.0, true);
+      expect(score1.cameraScore >= 8.0, true);
+      expect(score1.batteryScore >= 8.0, true);
+      expect(score1.keyStrengths.isNotEmpty, true);
+
+      // Điểm tổng thể và phân định máy dẫn đầu
+      expect(score1.overallScore > 0, true);
+      expect(score2.overallScore > 0, true);
+      final hasWinner = score1.isWinner || score2.isWinner;
+      expect(hasWinner, true);
+    });
+
+    test('5. Popular Presets & Spec Group Filtering', () async {
+      final provider = CompareProvider();
+
+      // Kiểm tra danh sách presets có sẵn
+      expect(provider.presets.isNotEmpty, true);
+      expect(provider.presets.any((p) => p.id == 'flagship_trio'), true);
+      expect(provider.presets.any((p) => p.id == 'apple_samsung'), true);
+
+      // Kiểm tra filter group
+      expect(provider.selectedGroupId, isNull);
+      provider.setSelectedGroupId('perf');
+      expect(provider.selectedGroupId, 'perf');
+
+      // Tắt filter về xem tất cả
+      provider.setSelectedGroupId('perf');
+      expect(provider.selectedGroupId, isNull);
+    });
   });
 }
