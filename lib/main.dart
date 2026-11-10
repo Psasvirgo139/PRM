@@ -12,6 +12,7 @@ import 'providers/admin_provider.dart';
 import 'providers/product_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/cart_provider.dart';
+import 'providers/compare_provider.dart';
 import 'providers/voucher_provider.dart';
 import 'providers/quest_provider.dart';
 import 'providers/lucky_wheel_provider.dart';
@@ -49,6 +50,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminProvider()),
         ChangeNotifierProvider(create: (_) => ProductProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => CompareProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
         // Các providers tiếp theo do các thành viên tích hợp:
         // ChangeNotifierProvider(create: (_) => CartProvider()),
