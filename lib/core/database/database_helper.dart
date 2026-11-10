@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
@@ -19,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
       onOpen: _onOpen,
@@ -152,13 +153,88 @@ class DatabaseHelper {
       )
     ''');
 
+    // 7. Vouchers (Hệ thống Voucher)
+    await db.execute('''
+      CREATE TABLE vouchers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        discount_type TEXT NOT NULL,
+        discount_value REAL NOT NULL,
+        min_order_value REAL DEFAULT 0,
+        max_discount REAL DEFAULT 0,
+        color_hex TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // 8. User Vouchers (Kho voucher cá nhân)
+    await db.execute('''
+      CREATE TABLE user_vouchers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        voucher_id INTEGER NOT NULL,
+        is_used INTEGER NOT NULL DEFAULT 0,
+        used_at TEXT,
+        acquired_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (voucher_id) REFERENCES vouchers (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 9. User Spins (Tổng lượt quay khả dụng)
+    await db.execute('''
+      CREATE TABLE user_spins (
+        user_id INTEGER PRIMARY KEY,
+        spins_left INTEGER NOT NULL DEFAULT 1,
+        total_spins_used INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 10. User Daily Quests (Tiến độ nhiệm vụ mỗi ngày)
+    await db.execute('''
+      CREATE TABLE user_daily_quests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        quest_date TEXT NOT NULL,
+        login_claimed INTEGER NOT NULL DEFAULT 0,
+        order_spins_earned INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        UNIQUE(user_id, quest_date)
+    // 7. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
+    await db.execute('''
+      CREATE TABLE reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        user_name TEXT NOT NULL,
+        user_avatar TEXT,
+        rating REAL NOT NULL,
+        comment TEXT NOT NULL,
+        images TEXT,
+        is_verified_buyer INTEGER DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+
     // Seed data
     await _seedInitialData(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 4) {
+    if (oldVersion < 5) {
       // Đơn giản hóa quá trình phát triển dev local: drop and recreate
+      await db.execute('DROP TABLE IF EXISTS user_daily_quests');
+      await db.execute('DROP TABLE IF EXISTS user_spins');
+      await db.execute('DROP TABLE IF EXISTS user_vouchers');
+      await db.execute('DROP TABLE IF EXISTS vouchers');
+      await db.execute('DROP TABLE IF EXISTS reviews');
       await db.execute('DROP TABLE IF EXISTS order_items');
       await db.execute('DROP TABLE IF EXISTS orders');
       await db.execute('DROP TABLE IF EXISTS cart_items');
@@ -166,6 +242,27 @@ class DatabaseHelper {
       await db.execute('DROP TABLE IF EXISTS categories');
       await db.execute('DROP TABLE IF EXISTS users');
       await _createDB(db, newVersion);
+      return;
+    }
+
+    if (oldVersion < 5) {
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS reviews (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          user_name TEXT NOT NULL,
+          user_avatar TEXT,
+          rating REAL NOT NULL,
+          comment TEXT NOT NULL,
+          images TEXT,
+          is_verified_buyer INTEGER DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+      ''');
+      await _seedReviewsData(db);
     }
   }
 
@@ -452,6 +549,218 @@ class DatabaseHelper {
       'quantity': 1,
       'subtotal': 27490000.0,
     });
+
+    // 7. Seed Vouchers hệ thống
+    final initialVouchers = [
+      {
+        'code': 'LUCKY20K',
+        'title': 'Voucher May Mắn 20K',
+        'description': 'Giảm trực tiếp 20.000₫ cho đơn hàng từ 200.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 20000.0,
+        'min_order_value': 200000.0,
+        'max_discount': 0.0,
+        'color_hex': '#FF8A00',
+        'created_at': now,
+      },
+      {
+        'code': 'FLASH30K',
+        'title': 'Voucher Chớp Nhoáng 30K',
+        'description': 'Giảm 30.000₫ cho đơn hàng từ 250.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 30000.0,
+        'min_order_value': 250000.0,
+        'max_discount': 0.0,
+        'color_hex': '#C2185B',
+        'created_at': now,
+      },
+      {
+        'code': 'SUPER50K',
+        'title': 'Siêu Voucher 50K',
+        'description': 'Giảm 50.000₫ cho đơn hàng công nghệ từ 500.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 50000.0,
+        'min_order_value': 500000.0,
+        'max_discount': 0.0,
+        'color_hex': '#E53935',
+        'created_at': now,
+      },
+      {
+        'code': 'VIP100K',
+        'title': 'Voucher Đại Gia 100K',
+        'description': 'Giảm 100.000₫ cho đơn hàng VIP từ 1.000.000₫',
+        'discount_type': 'FIXED',
+        'discount_value': 100000.0,
+        'min_order_value': 1000000.0,
+        'max_discount': 0.0,
+        'color_hex': '#FFA000',
+        'created_at': now,
+      },
+      {
+        'code': 'SALE10',
+        'title': 'Giảm Giá 10% Toàn Sàn',
+        'description': 'Giảm 10% tối đa 100.000₫ cho đơn từ 300.000₫',
+        'discount_type': 'PERCENT',
+        'discount_value': 10.0,
+        'min_order_value': 300000.0,
+        'max_discount': 100000.0,
+        'color_hex': '#7B1FA2',
+        'created_at': now,
+      },
+      {
+        'code': 'FREESHIP',
+        'title': 'Miễn Phí Vận Chuyển',
+        'description': 'Tài trợ tối đa 30.000₫ phí giao hàng cho đơn từ 150.000₫',
+        'discount_type': 'FREE_SHIP',
+        'discount_value': 30000.0,
+        'min_order_value': 150000.0,
+        'max_discount': 30000.0,
+        'color_hex': '#0288D1',
+        'created_at': now,
+      },
+    ];
+
+    for (var v in initialVouchers) {
+      await db.insert('vouchers', v);
+    }
+
+    // 8. Seed Lượt quay mặc định cho các Users
+    await db.insert('user_spins', {
+      'user_id': 1, // admin
+      'spins_left': 1,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 2, // employee
+      'spins_left': 1,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 3, // customer (cho sẵn 3 lượt để test quay thoải mái)
+      'spins_left': 3,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+    await db.insert('user_spins', {
+      'user_id': 4, // customer2
+      'spins_left': 2,
+      'total_spins_used': 0,
+      'updated_at': now,
+    });
+
+    // 9. Seed sẵn 1 Voucher mẫu vào kho của user customer (id=3) để demo
+    await db.insert('user_vouchers', {
+      'user_id': 3,
+      'voucher_id': 1, // LUCKY20K
+      'is_used': 0,
+      'acquired_at': now,
+    });
+    await db.insert('user_vouchers', {
+      'user_id': 3,
+      'voucher_id': 6, // FREESHIP
+      'is_used': 0,
+      'acquired_at': now,
+    });
+    // 5. Seed Reviews
+    await _seedReviewsData(db);
+  }
+
+  Future<void> _seedReviewsData(Database db) async {
+    final now = DateTime.now();
+    final yesterday = now.subtract(const Duration(days: 1)).toIso8601String();
+    final twoDaysAgo = now.subtract(const Duration(days: 2)).toIso8601String();
+    final threeDaysAgo = now.subtract(const Duration(days: 3)).toIso8601String();
+    final fourDaysAgo = now.subtract(const Duration(days: 4)).toIso8601String();
+
+    final reviews = [
+      // Product 1: iPhone 15 Pro Max
+      {
+        'product_id': 1,
+        'user_id': 3,
+        'user_name': 'Nguyễn Văn A',
+        'user_avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+        'rating': 5.0,
+        'comment': 'Máy cầm rất đầm tay, viền titan tự nhiên nhìn cực kỳ sang trọng. Camera zoom 5x chụp nét căng, pin trâu dùng cả ngày từ sáng đến tối vẫn còn 35%. Rất hài lòng với dịch vụ giao hàng nhanh của shop!',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=600',
+          'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': yesterday,
+      },
+      {
+        'product_id': 1,
+        'user_id': 4,
+        'user_name': 'Trần Thị B',
+        'user_avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        'rating': 5.0,
+        'comment': 'Giao hàng siêu nhanh chỉ trong 2 tiếng tại nội thành! Đóng gói cẩn thận 3 lớp chống sốc, nguyên seal chính hãng VN/A kích hoạt bảo hành đủ 12 tháng Apple.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': twoDaysAgo,
+      },
+      {
+        'product_id': 1,
+        'user_id': 2,
+        'user_name': 'Lê Minh Khang',
+        'user_avatar': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
+        'rating': 4.0,
+        'comment': 'Màn hình ProMotion 120Hz mượt mà, dynamic island tiện dụng. Điểm trừ nhẹ là hộp không kèm củ sạc nên phải mua thêm củ sạc nhanh 30W.',
+        'images': jsonEncode([]),
+        'is_verified_buyer': 0,
+        'created_at': threeDaysAgo,
+      },
+      // Product 4: AirPods Pro 2
+      {
+        'product_id': 4,
+        'user_id': 3,
+        'user_name': 'Nguyễn Văn A',
+        'user_avatar': 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
+        'rating': 5.0,
+        'comment': 'Chống ồn chủ động đỉnh chóp, ngồi quán cafe bật ANC là im bặt tiếng ồn. Âm bass trầm ấm, cổng Type-C tiện lợi chung sạc với điện thoại.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': yesterday,
+      },
+      // Product 3: MacBook Air M3
+      {
+        'product_id': 3,
+        'user_id': 4,
+        'user_name': 'Trần Thị B',
+        'user_avatar': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
+        'rating': 5.0,
+        'comment': 'MacBook Air M3 mỏng nhẹ tinh tế, khởi động tức thì. Bàn phím gõ êm, trackpad rê vuốt mượt mà, pin dùng làm việc cả ngày không cần cắm sạc.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=600',
+        ]),
+        'is_verified_buyer': 1,
+        'created_at': fourDaysAgo,
+      },
+      // Product 5: Keychron K2
+      {
+        'product_id': 5,
+        'user_id': 3,
+        'user_name': 'Hoàng Nam',
+        'user_avatar': null,
+        'rating': 5.0,
+        'comment': 'Bàn phím cơ gõ rất đầm tay, switch G Pro mượt không bị rung lắc. Kết nối bluetooth 3 thiết bị chuyển qua lại rất mượt.',
+        'images': jsonEncode([
+          'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=600',
+        ]),
+        'is_verified_buyer': 0,
+        'created_at': threeDaysAgo,
+      },
+    ];
+
+    for (final r in reviews) {
+      await db.insert('reviews', r);
+    }
   }
 
   Future<void> close() async {

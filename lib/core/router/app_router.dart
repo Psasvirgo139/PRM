@@ -18,6 +18,8 @@ import '../../screens/compare/product_compare_screen.dart';
 import '../../models/order.dart';
 import '../../models/payos_payment_data.dart';
 import '../../models/cart_item.dart';
+import '../../screens/lucky_wheel/lucky_wheel_screen.dart';
+import '../../screens/voucher/voucher_wallet_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -98,6 +100,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/compare',
       builder: (context, state) => const ProductCompareScreen(),
+    ),
+    GoRoute(
+      path: '/lucky-wheel',
+      builder: (context, state) => const LuckyWheelScreen(),
+    ),
+    GoRoute(
+      path: '/vouchers',
+      builder: (context, state) => const VoucherWalletScreen(),
     ),
   ],
 );

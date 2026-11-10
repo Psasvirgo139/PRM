@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/theme/app_theme.dart';
 import '../providers/auth_provider.dart';
+import 'lucky_wheel_logo.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
@@ -117,7 +118,17 @@ class AppDrawer extends StatelessWidget {
                   title: 'Giỏ hàng',
                   onTap: () {
                     Navigator.pop(context);
-                    context.push('/cart');
+                    if (!auth.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng đăng nhập để xem giỏ hàng!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      context.push('/login');
+                    } else {
+                      context.push('/cart');
+                    }
                   },
                 ),
                 _buildDrawerItem(
@@ -147,6 +158,48 @@ class AppDrawer extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(context);
                     context.push('/profile');
+                  },
+                ),
+                _buildDrawerItem(
+                  customLeading: const LuckyWheelLogo(
+                    size: 20,
+                    strokeColor: AppColors.primaryOrange,
+                    fillColor: Colors.white,
+                  ),
+                  iconColor: AppColors.primaryOrange,
+                  title: 'Vòng quay may mắn',
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!auth.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng đăng nhập để tham gia Vòng quay may mắn!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      context.push('/login');
+                    } else {
+                      context.push('/lucky-wheel');
+                    }
+                  },
+                ),
+                _buildDrawerItem(
+                  icon: Icons.confirmation_number_outlined,
+                  iconColor: Colors.deepPurple,
+                  title: 'Kho Voucher của tôi',
+                  onTap: () {
+                    Navigator.pop(context);
+                    if (!auth.isLoggedIn) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Vui lòng đăng nhập để xem Kho Voucher của bạn!'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      context.push('/login');
+                    } else {
+                      context.push('/vouchers');
+                    }
                   },
                 ),
 
@@ -243,7 +296,8 @@ class AppDrawer extends StatelessWidget {
   }
 
   Widget _buildDrawerItem({
-    required IconData icon,
+    IconData? icon,
+    Widget? customLeading,
     required Color iconColor,
     required String title,
     String? subtitle,
@@ -256,7 +310,7 @@ class AppDrawer extends StatelessWidget {
           color: iconColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: iconColor, size: 20),
+        child: customLeading ?? (icon != null ? Icon(icon, color: iconColor, size: 20) : const SizedBox.shrink()),
       ),
       title: Text(
         title,
