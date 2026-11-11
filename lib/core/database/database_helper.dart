@@ -28,43 +28,296 @@ class DatabaseHelper {
   }
 
   Future<void> _onOpen(Database db) async {
-    // Đảm bảo bổ sung các thiết bị demo so sánh đối đầu nếu chưa có
     try {
-      final res = await db.query('products', where: 'name LIKE ?', whereArgs: ['%Xiaomi 14 Ultra%']);
-      if (res.isEmpty) {
-        final now = DateTime.now().toIso8601String();
-        await db.insert('products', {
-          'category_id': 1,
-          'name': 'Xiaomi 14 Ultra 512GB',
-          'description': 'Camera Leica Summilux cảm biến 1 inch, chip Snapdragon 8 Gen 3, sạc siêu nhanh 90W.',
-          'price': 24990000.0,
-          'stock_quantity': 10,
-          'image_url': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500',
-          'created_at': now,
-        });
-        await db.insert('products', {
-          'category_id': 2,
-          'name': 'Dell XPS 13 9340 (2024)',
-          'description': 'Intel Core Ultra 7, màn hình 13.4 inch OLED 3K cảm ứng, phím tàng hình sang trọng, 1.19kg.',
-          'price': 34990000.0,
-          'stock_quantity': 6,
-          'image_url': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500',
-          'created_at': now,
-        });
-        await db.insert('products', {
-          'category_id': 2,
-          'name': 'Asus ROG Zephyrus G14 (2024)',
-          'description': 'Ryzen 9 8945HS, RTX 4060, 32GB RAM, màn hình OLED 120Hz 3K Nebula, thiết kế nhôm CNC.',
-          'price': 39990000.0,
-          'stock_quantity': 4,
-          'image_url': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500',
-          'created_at': now,
-        });
-      }
+      await _ensureFullProductCatalog(db);
       await _seedNotifications(db);
       await _seedVouchersAndSpins(db);
       await _seedReviewsData(db);
     } catch (_) {}
+  }
+
+  // Tự động đồng bộ đủ 32+ sản phẩm công nghệ phong phú cho database
+  static const List<Map<String, dynamic>> initialProductCatalog = [
+    // ── 1. ĐIỆN THOẠI (10 SẢN PHẨM) ──
+    {
+      'category_id': 1,
+      'name': 'iPhone 15 Pro Max 256GB',
+      'description': 'Titan tự nhiên, chip A17 Pro mạnh mẽ, camera tiềm vọng 5x đỉnh cao, nút Action Button tiện lợi.',
+      'price': 29990000.0,
+      'stock_quantity': 12,
+      'image_url': 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Samsung Galaxy S24 Ultra',
+      'description': 'Galaxy AI thông minh, bút S-Pen tích hợp, khung viền Titan, camera zoom 100x 200MP siêu chi tiết.',
+      'price': 27490000.0,
+      'stock_quantity': 8,
+      'image_url': 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Xiaomi 14 Ultra 512GB',
+      'description': 'Camera Leica Summilux cảm biến 1 inch, chip Snapdragon 8 Gen 3, sạc siêu nhanh 90W HyperCharge.',
+      'price': 24990000.0,
+      'stock_quantity': 10,
+      'image_url': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'iPhone 15 128GB',
+      'description': 'Dynamic Island tiện dụng, camera chính 48MP bắt trọn khoảnh khắc, kết nối USB-C tương thích tối đa.',
+      'price': 19490000.0,
+      'stock_quantity': 15,
+      'image_url': 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Samsung Galaxy Z Fold5',
+      'description': 'Màn hình gập Dynamic AMOLED 2X 7.6 inch đa nhiệm thần thánh, bản lề Flex không khe hở, kháng nước IPX8.',
+      'price': 31990000.0,
+      'stock_quantity': 6,
+      'image_url': 'https://images.unsplash.com/photo-1580910051074-3eb694886505?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Samsung Galaxy Z Flip5',
+      'description': 'Màn hình ngoài Flex Window 3.4 inch, gập mở vỏ sò thời thượng, chụp ảnh selfie rảnh tay mọi góc độ.',
+      'price': 17990000.0,
+      'stock_quantity': 14,
+      'image_url': 'https://images.unsplash.com/photo-1574944985070-8f3ebc6b79d2?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Google Pixel 8 Pro',
+      'description': 'Nhiếp ảnh AI điện toán đỉnh cao cùng chip Google Tensor G3, màn hình Super Actua 120Hz siêu sáng.',
+      'price': 21500000.0,
+      'stock_quantity': 7,
+      'image_url': 'https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'OPPO Find N3 Flip',
+      'description': 'Hệ thống 3 camera Hasselblad chuyên nghiệp, thiết kế gập tinh tế sang trọng, pin lớn sạc nhanh 44W.',
+      'price': 18990000.0,
+      'stock_quantity': 9,
+      'image_url': 'https://images.unsplash.com/photo-1565849904461-04a58ad377e0?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'iPhone 14 Plus 128GB',
+      'description': 'Màn hình Super Retina XDR 6.7 inch rộng lớn, thời lượng pin trâu dùng liên tục 2 ngày, chip A15 Bionic mượt mà.',
+      'price': 17290000.0,
+      'stock_quantity': 11,
+      'image_url': 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500',
+    },
+    {
+      'category_id': 1,
+      'name': 'Xiaomi Redmi Note 13 Pro+',
+      'description': 'Camera 200MP OIS bắt trọn chi tiết, màn hình cong 1.5K 120Hz, sạc siêu tốc 120W nạp đầy pin trong 19 phút.',
+      'price': 8990000.0,
+      'stock_quantity': 20,
+      'image_url': 'https://images.unsplash.com/photo-1598327105854-c8674faddf79?w=500',
+    },
+
+    // ── 2. LAPTOP (10 SẢN PHẨM) ──
+    {
+      'category_id': 2,
+      'name': 'MacBook Air M3 13 inch',
+      'description': 'Chip Apple M3 siêu nhanh, pin 18 tiếng liên tục, thiết kế nhôm nguyên khối mỏng nhẹ chỉ 1.24kg.',
+      'price': 26990000.0,
+      'stock_quantity': 5,
+      'image_url': 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'Dell XPS 13 9340 (2024)',
+      'description': 'Intel Core Ultra 7 tích hợp AI, màn hình 13.4 inch OLED 3K cảm ứng, thanh cảm ứng điện dung tàng hình, 1.19kg.',
+      'price': 34990000.0,
+      'stock_quantity': 6,
+      'image_url': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'Asus ROG Zephyrus G14 (2024)',
+      'description': 'Ryzen 9 8945HS, RTX 4060, 32GB RAM, màn hình OLED 120Hz 3K ROG Nebula Display, dải đèn Slash Lighting độc đáo.',
+      'price': 39990000.0,
+      'stock_quantity': 4,
+      'image_url': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'MacBook Pro 14 M3 Pro',
+      'description': 'Chip M3 Pro 11-core CPU, 14-core GPU, màn hình Liquid Retina XDR 120Hz sáng 1600 nits, 18GB Unified RAM.',
+      'price': 47990000.0,
+      'stock_quantity': 7,
+      'image_url': 'https://images.unsplash.com/photo-1541807084-5c52b6b3adef?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'Lenovo Legion 5 Pro 16IRX9',
+      'description': 'Intel Core i7-14650HX, RTX 4060 8GB TGP 140W, màn hình 16 inch 2.5K 240Hz 500 nits siêu mượt cho gamer.',
+      'price': 36500000.0,
+      'stock_quantity': 8,
+      'image_url': 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'Acer Swift Go 14 OLED',
+      'description': 'Intel Core Ultra 5 tích hợp NPU AI thông minh, màn hình OLED 2.8K 90Hz 100% DCI-P3 chuẩn màu, nặng chỉ 1.32kg.',
+      'price': 21990000.0,
+      'stock_quantity': 12,
+      'image_url': 'https://images.unsplash.com/photo-1525547719571-a2d4ac8945e2?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'HP Spectre x360 14',
+      'description': 'Laptop 2 trong 1 xoay gập 360 độ kèm bút vẽ Stylus, màn hình OLED 2.8K 120Hz, âm thanh vòm Poly Studio.',
+      'price': 35900000.0,
+      'stock_quantity': 5,
+      'image_url': 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'Asus Zenbook 14 OLED UX3405',
+      'description': 'Chuẩn Intel Evo Core Ultra 7, mỏng 14.9mm, pin khủng 75Wh làm việc liên tục 15 giờ, loa siêu trầm Harman Kardon.',
+      'price': 27990000.0,
+      'stock_quantity': 9,
+      'image_url': 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'LG Gram 16 (2024)',
+      'description': 'Kỷ lục siêu nhẹ 1.19kg trên khung hình 16 inch, màn hình IPS WQXGA chống chói, độ bền chuẩn quân đội MIL-STD-810H.',
+      'price': 32500000.0,
+      'stock_quantity': 6,
+      'image_url': 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=500',
+    },
+    {
+      'category_id': 2,
+      'name': 'MSI Katana 15 Gaming',
+      'description': 'Core i7-13620H, RTX 4050 6GB GDDR6, bàn phím LED RGB 4 vùng, tản nhiệt Cooler Boost 5 2 quạt 6 ống đồng.',
+      'price': 23990000.0,
+      'stock_quantity': 10,
+      'image_url': 'https://images.unsplash.com/photo-1544731612-de292439cc67?w=500',
+    },
+
+    // ── 3. PHỤ KIỆN (12 SẢN PHẨM) ──
+    {
+      'category_id': 3,
+      'name': 'AirPods Pro 2 USB-C',
+      'description': 'Chống ồn chủ động gấp 2 lần, chip H2 thế hệ mới, âm thanh Spatial Audio cá nhân hóa, kháng bụi nước IP54.',
+      'price': 5490000.0,
+      'stock_quantity': 25,
+      'image_url': 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Bàn phím cơ không dây Keychron K2',
+      'description': 'Switch Gateron G Pro mượt mà, kết nối đồng thời 3 thiết bị qua Bluetooth 5.1 và Type-C, khung nhôm phím PBT.',
+      'price': 1850000.0,
+      'stock_quantity': 3,
+      'image_url': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Chuột công thái học Logitech MX Master 3S',
+      'description': 'Cảm biến 8K DPI Darkfield lướt trên mọi bề mặt kể cả kính, cuộn siêu tốc MagSpeed, nhấp chuột êm giảm 90% ồn.',
+      'price': 2190000.0,
+      'stock_quantity': 8,
+      'image_url': 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Apple Watch Series 9 GPS 45mm',
+      'description': 'Chip Apple S9 SiP vượt trội, tính năng chạm hai lần ngón tay Double Tap điều khiển tiện lợi, màn hình 2000 nits.',
+      'price': 9790000.0,
+      'stock_quantity': 11,
+      'image_url': 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Tai nghe Sony WH-1000XM5',
+      'description': 'Khử tiếng ồn đỉnh cao thế giới với 8 micro và 2 bộ xử lý, màng loa 30mm mạ sợi carbon, micro AI lọc gió cực trong.',
+      'price': 7490000.0,
+      'stock_quantity': 14,
+      'image_url': 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Củ sạc nhanh Anker 735 GaNPrime 65W',
+      'description': 'Công nghệ GaN III siêu nhỏ gọn, trang bị 2 cổng USB-C và 1 cổng USB-A sạc an toàn 3 thiết bị cùng lúc PowerIQ 4.0.',
+      'price': 1150000.0,
+      'stock_quantity': 30,
+      'image_url': 'https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Pin sạc MagSafe Anker 622 5000mAh',
+      'description': 'Hít nam châm từ tính siêu chắc chắn cho dòng iPhone 12/13/14/15, chân đế gập thông minh tiện xem video lướt web.',
+      'price': 890000.0,
+      'stock_quantity': 22,
+      'image_url': 'https://images.unsplash.com/photo-1609081219090-a6d81d3085bf?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Apple Magic Keyboard Touch ID',
+      'description': 'Mở khóa một chạm bảo mật Touch ID cho Mac, cơ chế cắt kéo gõ phím cực êm, kết nối không dây Bluetooth ổn định.',
+      'price': 3490000.0,
+      'stock_quantity': 7,
+      'image_url': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Chuột Gaming Logitech G Pro X Superlight',
+      'description': 'Trọng lượng siêu nhẹ dưới 63g, cảm biến HERO 25K chính xác từng micromet, switch quang học lai Lightforce siêu bền.',
+      'price': 2690000.0,
+      'stock_quantity': 15,
+      'image_url': 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Loa Bluetooth Marshall Emberton II',
+      'description': 'Âm thanh đa hướng 360 độ True Stereophonic đặc trưng Marshall, pin nghe nhạc hơn 30 giờ, chuẩn chống nước bụi IP67.',
+      'price': 3890000.0,
+      'stock_quantity': 9,
+      'image_url': 'https://images.unsplash.com/photo-1545454675-3531b543be5d?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Cáp sạc Baseus C to C 100W Digital LED',
+      'description': 'Dây dù bện bọc nylon siêu bền chống gãy gập, màn hình LED hiển thị công suất sạc W thời gian thực, chip E-Marker.',
+      'price': 210000.0,
+      'stock_quantity': 45,
+      'image_url': 'https://images.unsplash.com/photo-1585338107529-13afc5f02586?w=500',
+    },
+    {
+      'category_id': 3,
+      'name': 'Samsung Galaxy Watch 6 Classic 47mm',
+      'description': 'Viền xoay Bezel vật lý cổ điển, kính Sapphire chống trầy xước, đo điện tâm đồ ECG và huyết áp sức khỏe chuyên sâu.',
+      'price': 7990000.0,
+      'stock_quantity': 10,
+      'image_url': 'https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=500',
+    },
+  ];
+
+  Future<void> _ensureFullProductCatalog(Database db) async {
+    final now = DateTime.now().toIso8601String();
+    for (final p in initialProductCatalog) {
+      final name = p['name'] as String;
+      final existing = await db.query(
+        'products',
+        columns: ['id'],
+        where: 'name = ?',
+        whereArgs: [name],
+        limit: 1,
+      );
+      if (existing.isEmpty) {
+        final productData = Map<String, dynamic>.from(p);
+        productData['created_at'] = now;
+        await db.insert('products', productData);
+      }
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -413,93 +666,11 @@ class DatabaseHelper {
     await db.rawInsert("INSERT INTO categories (name, icon) VALUES ('Laptop', 'laptop')");
     await db.rawInsert("INSERT INTO categories (name, icon) VALUES ('Phụ kiện', 'headphones')");
 
-    // 3. Seed Products
-    final products = [
-      {
-        'category_id': 1,
-        'name': 'iPhone 15 Pro Max 256GB',
-        'description': 'Titan tự nhiên, chip A17 Pro mạnh mẽ, camera tiềm vọng 5x.',
-        'price': 29990000.0,
-        'stock_quantity': 12,
-        'image_url': 'https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 1,
-        'name': 'Samsung Galaxy S24 Ultra',
-        'description': 'Galaxy AI, bút S-Pen tích hợp, camera 200MP.',
-        'price': 27490000.0,
-        'stock_quantity': 8,
-        'image_url': 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 2,
-        'name': 'MacBook Air M3 13 inch',
-        'description': 'Chip Apple M3 siêu nhanh, pin 18 tiếng, mỏng nhẹ 1.24kg.',
-        'price': 26990000.0,
-        'stock_quantity': 5,
-        'image_url': 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 3,
-        'name': 'AirPods Pro 2 USB-C',
-        'description': 'Chống ồn chủ động gấp 2 lần, chip H2 thế hệ mới.',
-        'price': 5490000.0,
-        'stock_quantity': 25,
-        'image_url': 'https://images.unsplash.com/photo-1600294037681-c80b4cb5b434?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 3,
-        'name': 'Bàn phím cơ không dây Keychron K2',
-        'description': 'Switch Gateron G Pro, kết nối Bluetooth 5.1 và dây Type-C.',
-        'price': 1850000.0,
-        'stock_quantity': 3,
-        'image_url': 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 3,
-        'name': 'Chuột công thái học Logitech MX Master 3S',
-        'description': 'Cảm biến 8K DPI, con lăn MagSpeed siêu êm.',
-        'price': 2190000.0,
-        'stock_quantity': 0, // Mock hết hàng để test validate tồn kho
-        'image_url': 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 1,
-        'name': 'Xiaomi 14 Ultra 512GB',
-        'description': 'Camera Leica Summilux cảm biến 1 inch, chip Snapdragon 8 Gen 3, sạc siêu nhanh 90W.',
-        'price': 24990000.0,
-        'stock_quantity': 10,
-        'image_url': 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 2,
-        'name': 'Dell XPS 13 9340 (2024)',
-        'description': 'Intel Core Ultra 7, màn hình 13.4 inch OLED 3K cảm ứng, phím tàng hình sang trọng, 1.19kg.',
-        'price': 34990000.0,
-        'stock_quantity': 6,
-        'image_url': 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500',
-        'created_at': now,
-      },
-      {
-        'category_id': 2,
-        'name': 'Asus ROG Zephyrus G14 (2024)',
-        'description': 'Ryzen 9 8945HS, RTX 4060, 32GB RAM, màn hình OLED 120Hz 3K Nebula, thiết kế nhôm CNC.',
-        'price': 39990000.0,
-        'stock_quantity': 4,
-        'image_url': 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=500',
-        'created_at': now,
-      },
-    ];
-
-    for (var p in products) {
-      await db.insert('products', p);
+    // 3. Seed Products (Toàn bộ danh mục 32+ sản phẩm công nghệ phong phú)
+    for (var p in initialProductCatalog) {
+      final productData = Map<String, dynamic>.from(p);
+      productData['created_at'] = now;
+      await db.insert('products', productData);
     }
 
     // 4. Seed Orders (Đơn hàng mẫu với các trạng thái khác nhau)

@@ -15,6 +15,7 @@ import '../../widgets/app_drawer.dart';
 import '../../widgets/compare_bottom_bar.dart';
 import '../../widgets/home_carousel_banner.dart';
 import '../../widgets/lucky_wheel_logo.dart';
+import '../../widgets/pagination_bar.dart';
 import '../../widgets/product_form_dialog.dart';
 import '../../widgets/product_skeleton.dart';
 
@@ -27,6 +28,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -41,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -207,6 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         child: ResponsiveContainer(
           child: CustomScrollView(
+            controller: _scrollController,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               // 1. Thanh tìm kiếm (Search Bar M3 Style ở trên cùng)
@@ -457,7 +461,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Sản phẩm (${products.length})',
+                            'Sản phẩm (${productProvider.totalProductCount})',
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
@@ -539,7 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   sliver: SliverGrid(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: crossAxisCount,
@@ -554,6 +558,28 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       childCount: products.length,
                     ),
+                  ),
+                ),
+
+              // 6. Thanh phân trang (Pagination Bar)
+              if (!isLoading && products.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: PaginationBar(
+                    currentPage: productProvider.currentPage,
+                    totalPages: productProvider.totalPages,
+                    totalItems: productProvider.totalProductCount,
+                    startIndex: productProvider.startIndex,
+                    endIndex: productProvider.endIndex,
+                    pageSize: productProvider.pageSize,
+                    onPageChanged: (newPage) => productProvider.goToPage(newPage),
+                    onPageSizeChanged: (newSize) => productProvider.setPageSize(newSize),
+                    onScrollToTop: () {
+                      _scrollController.animateTo(
+                        400,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    },
                   ),
                 ),
             ],
