@@ -8,11 +8,17 @@ class ProductProvider extends ChangeNotifier {
   final ProductRepository _productRepository = ProductRepository();
 
   List<Product> _products = [];
+  List<Product> _allProductsCache = [];
   List<Category> _categories = [];
   bool _isLoading = false;
   String _searchQuery = '';
   int? _selectedCategoryId; // null = Tất cả danh mục
   String? _errorMessage;
+
+  // ── Thuộc tính phân trang (Pagination) ──
+  int _currentPage = 1;
+  int _pageSize = 8; // Mặc định 8 sản phẩm / trang
+  int _totalProductCount = 0;
 
   List<Product> get products => _products;
   List<Category> get categories => _categories;
@@ -21,12 +27,29 @@ class ProductProvider extends ChangeNotifier {
   int? get selectedCategoryId => _selectedCategoryId;
   String? get errorMessage => _errorMessage;
 
-  // Tìm sản phẩm trong danh sách theo ID
+  // Getters phân trang
+  int get currentPage => _currentPage;
+  int get pageSize => _pageSize;
+  int get totalProductCount => _totalProductCount;
+  int get totalPages => (_totalProductCount == 0) ? 1 : (_totalProductCount / _pageSize).ceil();
+  bool get hasPreviousPage => _currentPage > 1;
+  bool get hasNextPage => _currentPage < totalPages;
+  int get startIndex => _totalProductCount == 0 ? 0 : (_currentPage - 1) * _pageSize + 1;
+  int get endIndex {
+    final end = _currentPage * _pageSize;
+    return end > _totalProductCount ? _totalProductCount : end;
+  }
+
+  // Tìm sản phẩm trong danh sách theo ID (tra cứu trang hiện tại, sau đó tra cứu toàn bộ cache)
   Product? findById(int id) {
     try {
       return _products.firstWhere((p) => p.id == id);
     } catch (_) {
-      return null;
+      try {
+        return _allProductsCache.firstWhere((p) => p.id == id);
+      } catch (_) {
+        return null;
+      }
     }
   }
 
@@ -69,17 +92,37 @@ class ProductProvider extends ChangeNotifier {
 
   Future<void> loadCategories() => fetchCategories();
 
-  // Tải danh sách sản phẩm theo bộ lọc hiện tại
-  Future<void> loadProducts() async {
+  // Tải danh sách sản phẩm theo bộ lọc hiện tại có phân trang
+  Future<void> loadProducts({bool resetPage = false}) async {
+    if (resetPage) {
+      _currentPage = 1;
+    }
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      _products = await _productRepository.getProducts(
+      // 1. Đếm tổng số sản phẩm thỏa mãn điều kiện
+      _totalProductCount = await _productRepository.getProductCount(
         search: _searchQuery,
         categoryId: _selectedCategoryId,
       );
+
+      // Nếu trang hiện tại vượt quá số trang thực tế thì quay về trang 1
+      if (_currentPage > totalPages && totalPages > 0) {
+        _currentPage = 1;
+      }
+
+      // 2. Lấy dữ liệu sản phẩm của trang hiện tại
+      _products = await _productRepository.getPaginatedProducts(
+        search: _searchQuery,
+        categoryId: _selectedCategoryId,
+        page: _currentPage,
+        pageSize: _pageSize,
+      );
+
+      // 3. Cập nhật cache toàn bộ sản phẩm để phục vụ chi tiết và so sánh
+      _allProductsCache = await _productRepository.getAllProducts();
     } catch (e) {
       _errorMessage = 'Không thể tải danh sách sản phẩm: $e';
     } finally {
@@ -88,17 +131,48 @@ class ProductProvider extends ChangeNotifier {
     }
   }
 
-  // Cập nhật từ khóa tìm kiếm
+  // Chuyển đến trang chỉ định
+  Future<void> goToPage(int page) async {
+    if (page < 1 || page > totalPages || page == _currentPage) return;
+    _currentPage = page;
+    await loadProducts();
+  }
+
+  // Trang kế tiếp
+  Future<void> nextPage() async {
+    if (hasNextPage) {
+      await goToPage(_currentPage + 1);
+    }
+  }
+
+  // Trang trước
+  Future<void> previousPage() async {
+    if (hasPreviousPage) {
+      await goToPage(_currentPage - 1);
+    }
+  }
+
+  // Thay đổi số lượng sản phẩm mỗi trang (8, 12, 16...)
+  Future<void> setPageSize(int size) async {
+    if (_pageSize == size) return;
+    _pageSize = size;
+    _currentPage = 1;
+    await loadProducts();
+  }
+
+  // Cập nhật từ khóa tìm kiếm (tự động reset về trang 1)
   void setSearchQuery(String query) {
     if (_searchQuery == query) return;
     _searchQuery = query;
+    _currentPage = 1;
     loadProducts();
   }
 
-  // Lọc theo danh mục (null hoặc 0 là chọn tất cả)
+  // Lọc theo danh mục (tự động reset về trang 1)
   void selectCategory(int? categoryId) {
     if (_selectedCategoryId == categoryId) return;
     _selectedCategoryId = categoryId;
+    _currentPage = 1;
     loadProducts();
   }
 
@@ -106,6 +180,7 @@ class ProductProvider extends ChangeNotifier {
   void clearFilters() {
     _searchQuery = '';
     _selectedCategoryId = null;
+    _currentPage = 1;
     loadProducts();
   }
 
