@@ -100,10 +100,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  Widget _buildSuggestedProductCard(Product product, CartProvider cart) {
+  Widget _buildSuggestedProductCard(Product product) {
     return Container(
       width: 155,
-      margin: const EdgeInsets.only(right: 10, top: 8, bottom: 4),
+      margin: const EdgeInsets.only(right: 10, top: 4, bottom: 6),
       decoration: BoxDecoration(
         color: AppColors.surfaceWhite,
         borderRadius: BorderRadius.circular(14),
@@ -116,73 +116,88 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Ảnh sản phẩm
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
-            child: AspectRatio(
-              aspectRatio: 1.25,
-              child: Image.network(
-                product.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: AppColors.backgroundLight,
-                  child: const Icon(Icons.image_not_supported_outlined, color: AppColors.textMuted),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => context.push('/product/${product.id}', extra: product),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Ảnh sản phẩm với chiều cao cố định để không bị lệch bố cục
+              SizedBox(
+                height: 96,
+                width: double.infinity,
+                child: Image.network(
+                  product.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    color: AppColors.backgroundLight,
+                    child: const Icon(
+                      Icons.image_not_supported_outlined,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // Tên và giá
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                      height: 1.2,
-                    ),
-                  ),
-                  Text(
-                    CurrencyFormatter.format(product.price),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primaryOrange,
-                    ),
-                  ),
-                  // Nút xem chi tiết
-                  SizedBox(
-                    width: double.infinity,
-                    height: 28,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.orangeLight,
-                        foregroundColor: AppColors.primaryOrange,
-                        padding: EdgeInsets.zero,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              // Thông tin sản phẩm & Nút xem
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        product.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          height: 1.25,
+                        ),
                       ),
-                      onPressed: () => context.push('/product/${product.id}', extra: product),
-                      child: const Text('Xem ngay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    ),
+                      const Spacer(),
+                      Text(
+                        CurrencyFormatter.format(product.price),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primaryOrange,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      // Nút xem chi tiết
+                      SizedBox(
+                        width: double.infinity,
+                        height: 28,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.orangeLight,
+                            foregroundColor: AppColors.primaryOrange,
+                            padding: EdgeInsets.zero,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => context.push('/product/${product.id}', extra: product),
+                          child: const Text(
+                            'Xem chi tiết',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -327,12 +342,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   if (suggestedProducts.isNotEmpty) ...[
                     const SizedBox(height: 6),
                     SizedBox(
-                      height: 195,
+                      height: 228,
                       child: ListView.builder(
                         scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
                         itemCount: suggestedProducts.length,
                         itemBuilder: (context, index) {
-                          return _buildSuggestedProductCard(suggestedProducts[index], cart);
+                          return _buildSuggestedProductCard(suggestedProducts[index]);
                         },
                       ),
                     ),
