@@ -155,6 +155,22 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () => context.push(auth.isAdmin ? '/admin' : '/admin/orders'),
             ),
 
+          // Trợ lý ảo AI Chatbot
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppColors.primaryOrange, AppColors.secondaryBlue],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.smart_toy_rounded, size: 16, color: Colors.white),
+            ),
+            tooltip: 'Trợ lý AI Tư vấn',
+            onPressed: () => context.push('/ai-chat'),
+          ),
+
           // Thông báo kèm Badge số lượng chưa đọc
           IconButton(
             icon: Badge.count(
@@ -586,17 +602,41 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      // FAB thêm nhanh sản phẩm cho Admin
+      // FAB Trợ lý AI và Quản trị SP cho Admin
       floatingActionButton: auth.isAdmin
-          ? FloatingActionButton.extended(
-              onPressed: () => ProductFormDialog.show(context),
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.extended(
+                  heroTag: 'ai_chat_fab',
+                  onPressed: () => context.push('/ai-chat'),
+                  backgroundColor: AppColors.secondaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  icon: const Icon(Icons.smart_toy_rounded, size: 20),
+                  label: const Text('AI Tư vấn', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+                const SizedBox(width: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'add_product_fab',
+                  onPressed: () => ProductFormDialog.show(context),
+                  backgroundColor: AppColors.primaryOrange,
+                  foregroundColor: Colors.white,
+                  elevation: 4,
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Thêm SP', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            )
+          : FloatingActionButton.extended(
+              heroTag: 'ai_chat_fab',
+              onPressed: () => context.push('/ai-chat'),
               backgroundColor: AppColors.primaryOrange,
               foregroundColor: Colors.white,
               elevation: 4,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Thêm SP', style: TextStyle(fontWeight: FontWeight.bold)),
-            )
-          : null,
+              icon: const Icon(Icons.smart_toy_rounded, size: 20),
+              label: const Text('AI Tư vấn', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            ),
     );
   }
 
