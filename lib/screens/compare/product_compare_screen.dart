@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -25,13 +26,6 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final compare = context.read<CompareProvider>();
-      // Nếu chưa có sản phẩm nào, tự động nạp mẫu 2 điện thoại để demo đối đầu ngay
-      if (compare.count == 0) {
-        compare.loadDefaultDemoComparison();
-      }
-    });
   }
 
   @override
@@ -53,6 +47,79 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
     );
   }
 
+  /// Sao chép tóm tắt bảng so sánh đối đầu vào Clipboard để chia sẻ
+  void _copySummary(BuildContext context, CompareProvider compare) {
+    final products = compare.selectedProducts;
+    if (products.isEmpty) return;
+
+    final scores = compare.getScoreBreakdowns();
+    final buffer = StringBuffer();
+
+    buffer.writeln('📱 BẢNG SO SÁNH THÔNG SỐ ĐỐI ĐẦU');
+    buffer.writeln('Thiết bị: ${products.map((p) => p.name).join('  VS  ')}');
+    buffer.writeln('────────────────────────────────────────');
+    buffer.writeln('🏆 ĐIỂM SỐ & ĐÁNH GIÁ CHUYÊN GIA:');
+
+    for (final p in products) {
+      final score = scores[p.id];
+      if (score != null) {
+        final winnerMark = score.isWinner ? ' 👑 [CHIẾN THẮNG CHUNG CUỘC]' : '';
+        buffer.writeln('• ${p.name}: ${score.overallScore}/10$winnerMark');
+        buffer.writeln('  - Nhận định: ${score.verdictBadge}');
+        buffer.writeln(
+            '  - Điểm 4 trụ cột: Hiệu năng: ${score.performanceScore} | Màn hình: ${score.displayScore} | Camera: ${score.cameraScore} | Pin: ${score.batteryScore}');
+        if (score.keyStrengths.isNotEmpty) {
+          buffer.writeln('  - Điểm mạnh: ${score.keyStrengths.join(' • ')}');
+        }
+      }
+    }
+
+    buffer.writeln('────────────────────────────────────────');
+    buffer.writeln('⚡ CHI TIẾT THÔNG SỐ KỸ THUẬT:');
+    final merged = compare.getMergedGroups();
+    for (final group in merged) {
+      buffer.writeln('\n[${group.name.toUpperCase()}]');
+      for (final item in group.items) {
+        final line = StringBuffer('• ${item.label}: ');
+        for (int i = 0; i < products.length; i++) {
+          final p = products[i];
+          final specs = compare.getSpecsForProduct(p.id!);
+          final specVal = specs?.findSpec(item.key)?.value ?? 'N/A';
+          final shortName = p.name.split(' ').take(3).join(' ');
+          line.write('$shortName ($specVal)');
+          if (i < products.length - 1) line.write('  |  ');
+        }
+        buffer.writeln(line.toString());
+      }
+    }
+
+    buffer.writeln('\n────────────────────────────────────────');
+    buffer.writeln('Được tạo bởi tính năng So Sánh Đối Đầu - Ứng dụng PRM Tech Store.');
+
+    Clipboard.setData(ClipboardData(text: buffer.toString()));
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Đã sao chép tóm tắt so sánh đối đầu vào bộ nhớ tạm!',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final compare = context.watch<CompareProvider>();
@@ -68,7 +135,12 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
         ),
         centerTitle: true,
         actions: [
-          if (products.isNotEmpty)
+          if (products.isNotEmpty) ...[
+            IconButton(
+              icon: const Icon(Icons.share_outlined),
+              tooltip: 'Sao chép / Chia sẻ tóm tắt',
+              onPressed: () => _copySummary(context, compare),
+            ),
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
               tooltip: 'Xóa tất cả',
@@ -96,6 +168,7 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
                 );
               },
             ),
+          ],
         ],
       ),
       body: compare.isLoading
@@ -118,11 +191,19 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Thanh điều khiển Differential Highlight
+                        // 1. Cặp đấu kinh điển 1-chạm (Presets)
+                        _buildPresetsRow(compare),
+                        const SizedBox(height: 12),
+
+                        // 2. Bảng Chấm Điểm Đối Đầu & Nhận Định Chuyên Gia (Smart Scoring & Verdict)
+                        _buildSmartScoringCard(context, compare),
+                        const SizedBox(height: 14),
+
+                        // 3. Tùy chỉnh đối đầu & Lọc nhóm thông số nhanh (Differential Highlight & Group Filter)
                         _buildControlFilterBar(compare),
                         const SizedBox(height: 16),
 
-                        // Bảng so sánh đối đầu với Horizontal Sync Scrolling
+                        // 4. Bảng so sánh đối đầu chi tiết với Horizontal Sync Scrolling
                         _buildComparisonTable(context, compare, cart),
                         const SizedBox(height: 30),
                       ],
@@ -132,8 +213,336 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
     );
   }
 
+  /// Dải phím tắt nạp nhanh các cặp đấu kinh điển 1-chạm (Presets)
+  Widget _buildPresetsRow(CompareProvider compare) {
+    final presets = compare.presets;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_fire_department_rounded, color: Colors.deepOrange, size: 18),
+              const SizedBox(width: 6),
+              const Text(
+                'Cặp đấu kinh điển 1-chạm:',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+              ),
+              const Spacer(),
+              Text(
+                'Chạm để so sánh ngay',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade500),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: presets.map((preset) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ActionChip(
+                    avatar: Icon(preset.icon, size: 15, color: AppColors.primaryOrange),
+                    label: Text(
+                      preset.title,
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                    ),
+                    backgroundColor: AppColors.primaryOrange.withValues(alpha: 0.05),
+                    side: BorderSide(color: AppColors.primaryOrange.withValues(alpha: 0.25)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    onPressed: () => compare.applyPreset(preset),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Bảng Chấm Điểm Đối Đầu & Nhận Định Chuyên Gia (Smart Specs Scoring & Verdict)
+  Widget _buildSmartScoringCard(BuildContext context, CompareProvider compare) {
+    final products = compare.selectedProducts;
+    final scores = compare.getScoreBreakdowns();
+    if (products.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.orange.shade50.withValues(alpha: 0.8), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryOrange.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withValues(alpha: 0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryOrange,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.emoji_events_rounded, color: Colors.white, size: 18),
+              ),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'BẢNG ĐIỂM ĐỐI ĐẦU & NHẬN ĐỊNH CHUYÊN GIA',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12.5,
+                        color: Color(0xFF1E293B),
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    Text(
+                      'Chấm điểm 4 trụ cột: Hiệu năng, Màn hình, Camera & Pin & Sạc',
+                      style: TextStyle(fontSize: 10.5, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Product Cards Row / Grid
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 650;
+              return isNarrow
+                  ? Column(
+                      children: [
+                        for (final p in products)
+                          _buildSingleProductScoreCard(p, scores[p.id]),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final p in products)
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: _buildSingleProductScoreCard(p, scores[p.id]),
+                            ),
+                          ),
+                      ],
+                    );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Thẻ điểm số của từng thiết bị trong cuộc đối đầu
+  Widget _buildSingleProductScoreCard(Product product, ProductScoreBreakdown? score) {
+    if (score == null) return const SizedBox.shrink();
+
+    final isWinner = score.isWinner;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isWinner ? Colors.amber.shade600 : Colors.grey.shade300,
+          width: isWinner ? 1.8 : 1.0,
+        ),
+        boxShadow: isWinner
+            ? [
+                BoxShadow(
+                  color: Colors.amber.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Tên sản phẩm + Huy hiệu dẫn đầu nếu có
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                ),
+              ),
+              if (isWinner)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.amber.shade700, width: 0.8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.workspace_premium, size: 12, color: Colors.amber.shade900),
+                      const SizedBox(width: 2),
+                      Text(
+                        'CHIẾN THẮNG',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Điểm tổng thể & Danh hiệu nhận định
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                score.overallScore.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: isWinner ? Colors.amber.shade900 : AppColors.primaryOrange,
+                  height: 1,
+                ),
+              ),
+              const Text(
+                ' / 10',
+                style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  score.verdictBadge,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: Color(0xFF334155)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // 4 thanh điểm trụ cột (Hiệu năng, Màn hình, Camera, Pin)
+          _buildPillarBar('⚡ Hiệu năng', score.performanceScore, Colors.blue),
+          const SizedBox(height: 4),
+          _buildPillarBar('📱 Màn hình', score.displayScore, Colors.purple),
+          const SizedBox(height: 4),
+          _buildPillarBar('📸 Camera', score.cameraScore, Colors.teal),
+          const SizedBox(height: 4),
+          _buildPillarBar('🔋 Pin & Sạc', score.batteryScore, Colors.green),
+          const SizedBox(height: 8),
+
+          // Danh sách điểm mạnh vượt trội
+          Wrap(
+            spacing: 4,
+            runSpacing: 4,
+            children: score.keyStrengths.map((str) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryOrange.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '✓ $str',
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primaryOrange,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPillarBar(String label, double score, MaterialColor color) {
+    final progress = (score / 10.0).clamp(0.0, 1.0);
+    return Row(
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 9.5, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+          ),
+        ),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 5,
+              backgroundColor: color.shade50,
+              valueColor: AlwaysStoppedAnimation<Color>(color.shade600),
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        SizedBox(
+          width: 22,
+          child: Text(
+            score.toStringAsFixed(1),
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: FontWeight.bold,
+              color: color.shade800,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Thanh công cụ tùy chỉnh bộ lọc so sánh thông minh
   Widget _buildControlFilterBar(CompareProvider compare) {
+    final mergedGroups = compare.getMergedGroups();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -149,6 +558,7 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -239,6 +649,69 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
               ),
             ],
           ),
+
+          if (mergedGroups.isNotEmpty) ...[
+            const Divider(height: 18),
+            // Thanh lọc nhóm thông số nhanh (Filter / Jump-To Chips)
+            Row(
+              children: [
+                const Icon(Icons.filter_list_rounded, size: 16, color: Color(0xFF64748B)),
+                const SizedBox(width: 6),
+                const Text(
+                  'Lọc nhóm thông số:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                ),
+                const Spacer(),
+                if (compare.selectedGroupId != null)
+                  InkWell(
+                    onTap: () => compare.setSelectedGroupId(null),
+                    child: const Text(
+                      'Hiện tất cả',
+                      style: TextStyle(fontSize: 11, color: AppColors.primaryOrange, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    label: const Text('Tất cả nhóm'),
+                    selected: compare.selectedGroupId == null,
+                    selectedColor: AppColors.primaryOrange,
+                    labelStyle: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: compare.selectedGroupId == null ? Colors.white : Colors.black87,
+                    ),
+                    onSelected: (_) => compare.setSelectedGroupId(null),
+                  ),
+                  const SizedBox(width: 6),
+                  for (final g in mergedGroups) ...[
+                    ChoiceChip(
+                      avatar: Icon(
+                        g.icon,
+                        size: 14,
+                        color: compare.selectedGroupId == g.id ? Colors.white : AppColors.primaryOrange,
+                      ),
+                      label: Text('${g.name} (${g.items.length})'),
+                      selected: compare.selectedGroupId == g.id,
+                      selectedColor: AppColors.primaryOrange,
+                      labelStyle: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.bold,
+                        color: compare.selectedGroupId == g.id ? Colors.white : Colors.black87,
+                      ),
+                      onSelected: (_) => compare.setSelectedGroupId(g.id),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -251,7 +724,11 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
     CartProvider cart,
   ) {
     final products = compare.selectedProducts;
-    final mergedGroups = compare.getMergedGroups();
+    final allGroups = compare.getMergedGroups();
+    final mergedGroups = allGroups.where((g) {
+      if (compare.selectedGroupId == null) return true;
+      return g.id == compare.selectedGroupId;
+    }).toList();
 
     // Độ rộng tiêu chuẩn cho mỗi cột sản phẩm
     const double specColWidth = 140.0;
@@ -695,62 +1172,147 @@ class _ProductCompareScreenState extends State<ProductCompareScreen> {
 
   /// Trạng thái trống khi chưa có thiết bị nào trong bảng
   Widget _buildEmptyState(BuildContext context, CompareProvider compare) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.primaryOrange.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.compare_arrows_rounded,
-                size: 64,
-                color: AppColors.primaryOrange,
-              ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              'Chưa có thiết bị nào để so sánh',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Chọn từ 2 đến 3 điện thoại hoặc laptop để so sánh chi tiết đối đầu thông số kỹ thuật.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primaryOrange,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  ),
-                  onPressed: () => _openProductSelector(context),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Chọn sản phẩm'),
+    final presets = compare.presets;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primaryOrange,
-                    side: const BorderSide(color: AppColors.primaryOrange),
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  ),
-                  onPressed: () => compare.loadDefaultDemoComparison(),
-                  icon: const Icon(Icons.flash_on),
-                  label: const Text('Xem mẫu demo Flagship'),
+                child: const Icon(
+                  Icons.compare_arrows_rounded,
+                  size: 56,
+                  color: AppColors.primaryOrange,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Chưa có thiết bị nào để so sánh',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Chọn từ 2 đến 3 điện thoại hoặc laptop để so sánh chi tiết đối đầu thông số kỹ thuật.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 10,
+                alignment: WrapAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primaryOrange,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    onPressed: () => _openProductSelector(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Chọn sản phẩm'),
+                  ),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryOrange,
+                      side: const BorderSide(color: AppColors.primaryOrange),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    onPressed: () => compare.loadDefaultDemoComparison(),
+                    icon: const Icon(Icons.flash_on),
+                    label: const Text('Xem mẫu demo Flagship'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+
+              // Danh sách Cặp Đấu Kinh Điển 1-Chạm
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.borderLight),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.local_fire_department_rounded, color: Colors.deepOrange, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Cặp đấu kinh điển 1-chạm (Popular Presets)',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Bấm vào một cặp đấu để nạp ngay bảng so sánh đối đầu chi tiết:',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                    const Divider(height: 18),
+                    for (int i = 0; i < presets.length; i++) ...[
+                      InkWell(
+                        onTap: () => compare.applyPreset(presets[i]),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryOrange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(presets[i].icon, color: AppColors.primaryOrange, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      presets[i].title,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      presets[i].subtitle,
+                                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.primaryOrange),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (i < presets.length - 1) const Divider(height: 8, thickness: 0.5),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

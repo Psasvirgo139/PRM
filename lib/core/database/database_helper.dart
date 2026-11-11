@@ -225,7 +225,6 @@ class DatabaseHelper {
         UNIQUE(user_id, quest_date)
       )
     ''');
-    
     // 12. Reviews & Ratings (Đánh giá sản phẩm kèm ảnh thực tế)
     await db.execute('''
       CREATE TABLE reviews (

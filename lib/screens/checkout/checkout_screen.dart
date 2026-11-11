@@ -221,6 +221,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       if (!mounted) return;
 
       if (_selectedPaymentMethod == 'PAYOS') {
+        if (!mounted) return;
         // Hiển thị dialog đang khởi tạo thanh toán payOS
         showDialog(
           context: context,
