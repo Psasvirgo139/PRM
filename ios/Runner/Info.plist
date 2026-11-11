@@ -59,6 +59,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập camera để chụp ảnh đính kèm đánh giá sản phẩm.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh đính kèm đánh giá sản phẩm.</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
