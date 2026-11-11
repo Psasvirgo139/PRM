@@ -18,6 +18,7 @@ import 'providers/voucher_provider.dart';
 import 'providers/quest_provider.dart';
 import 'providers/lucky_wheel_provider.dart';
 import 'providers/review_provider.dart';
+import 'providers/chat_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -100,6 +101,14 @@ class MyApp extends StatelessWidget {
             if (auth.currentUser?.id != null) {
               provider.setUserId(auth.currentUser!.id!);
             }
+            return provider;
+          },
+        ),
+        ChangeNotifierProxyProvider<AuthProvider, ChatProvider>(
+          create: (_) => ChatProvider(),
+          update: (_, auth, chat) {
+            final provider = chat ?? ChatProvider();
+            provider.init(auth.currentUser?.id);
             return provider;
           },
         ),

@@ -146,6 +146,16 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
                 _buildDrawerItem(
+                  icon: Icons.smart_toy_outlined,
+                  iconColor: AppColors.secondaryBlue,
+                  title: 'Trợ lý AI tư vấn',
+                  subtitle: 'Tư vấn sản phẩm & khuyến mãi 24/7',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/ai-chat');
+                  },
+                ),
+                _buildDrawerItem(
                   icon: Icons.compare_arrows_rounded,
                   iconColor: AppColors.primaryOrange,
                   title: 'So sánh sản phẩm',

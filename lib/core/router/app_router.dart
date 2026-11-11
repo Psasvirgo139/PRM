@@ -21,6 +21,7 @@ import '../../models/payos_payment_data.dart';
 import '../../models/cart_item.dart';
 import '../../screens/lucky_wheel/lucky_wheel_screen.dart';
 import '../../screens/voucher/voucher_wallet_screen.dart';
+import '../../screens/chat/ai_chat_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -113,6 +114,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/vouchers',
       builder: (context, state) => const VoucherWalletScreen(),
+    ),
+    GoRoute(
+      path: '/ai-chat',
+      builder: (context, state) => const AiChatScreen(),
     ),
   ],
 );

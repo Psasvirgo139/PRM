@@ -30,10 +30,24 @@ class DatabaseHelper {
   Future<void> _onOpen(Database db) async {
     try {
       await _ensureFullProductCatalog(db);
+      await _ensureChatMessagesTable(db);
       await _seedNotifications(db);
       await _seedVouchersAndSpins(db);
       await _seedReviewsData(db);
     } catch (_) {}
+  }
+
+  Future<void> _ensureChatMessagesTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        sender TEXT NOT NULL,
+        content TEXT NOT NULL,
+        suggested_product_ids TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
   }
 
   // Tự động đồng bộ đủ 32+ sản phẩm công nghệ phong phú cho database
@@ -493,6 +507,18 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 13. Chat Messages (Lịch sử trò chuyện với Trợ lý AI)
+    await db.execute('''
+      CREATE TABLE chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        sender TEXT NOT NULL,
+        content TEXT NOT NULL,
+        suggested_product_ids TEXT,
+        created_at TEXT NOT NULL
       )
     ''');
 
